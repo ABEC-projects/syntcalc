@@ -4,15 +4,38 @@ pub use unit::Unit;
 use unit::base_units::*;
 pub use unit::base_units;
 
+#[derive(Debug, Clone)]
+pub struct ValOpts{
+    
+}
+
+impl Default for ValOpts{
+    fn default() -> Self {
+        ValOpts{}
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct Val{
     unit: Unit,
     magn: f64,
+    pub options: ValOpts
 }
+
+impl Default for Val{
+    fn default() -> Self {
+        Val { unit: (D), magn: (1.), options: (ValOpts::default()) }
+    }
+}
+
 impl Val{
     pub fn new(magn:f64, unit: unit::Unit) -> Self{
-        Val{magn, unit}
+        Val{magn, unit, options: ValOpts::default()}
+    }
+
+    pub fn set_options(&mut self, options: ValOpts) -> &Self{
+        self.options = options;
+        self
     }
 
     pub fn pow(self, p:f64) -> Self{
@@ -22,13 +45,13 @@ impl Val{
     ret
     }
 
-    pub fn same_unit(other: &Val, precision: Option<f64>) -> bool{
+    pub fn same_unit(&self, other: &Val, precision: Option<f64>) -> bool{
         let precisionf;
         match precision {
             Some(x) => precisionf = x,
             None => precisionf = 0.02,
         };
-        true
+        return self.unit.same_unit(&other.unit, precisionf);
     }
 }
 
