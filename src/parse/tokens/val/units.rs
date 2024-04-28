@@ -4,29 +4,36 @@ use super::Val;
 
 type Map = HashMap<String, Val>;
 
-pub struct Associations{
+pub struct ValAlias{
     map: Map,
 }
 
-impl Associations {
+impl ValAlias {
     pub fn new() -> Self{
         let mut map: Map = HashMap::new();
-        map.insert(String::from("km"), Val { unit: (M), magn: (1000.), ..Default::default()});
-        map.insert(String::from("g"), Val { unit: (KG), magn: (0.001), ..Default::default() });
-        map.insert(String::from("min"), Val { unit: (S), magn: (60.), ..Default::default() });
-        map.insert(String::from("ms"), Val { unit: (S), magn: (0.001), ..Default::default() });
-        map.insert(String::from("J"), Val { unit: (KG*M.pow(2.)/M.pow(2.)), magn: (1.), ..Default::default() });
-        map.insert(String::from("min"), Val { unit: (D), magn: (3.14159265359), ..Default::default() });
+        map.insert(String::from("km"), Val::new(1000., M));
+        map.insert(String::from("g"), Val::new(0.001, KG));
+        map.insert(String::from("min"), Val::new(60., S));
+        map.insert(String::from("ms"), Val::new(0.001, S));
+        map.insert(String::from("s"), Val::new(1., S));
+        map.insert(String::from("J"), Val::new(1., KG*M.pow(2.)/S.pow(2.)));
+        map.insert(String::from("pi"), Val::new(3.14159265359, D));
+        map.insert(String::from("W"), Val::new(1., KG*M.pow(2.)/S.pow(3.)));
 
-        Associations{map}
+        ValAlias{map}
     }
-    pub fn get_unit(&self, key: &String) -> Val{
-        return self.map[key].clone();
+    pub fn get_val(&self, key: &str) -> Option<Val>{
+        self.map.get(key).cloned()
+
     }
     pub fn get_map(&self) -> &Map{
         &self.map
     }
-    pub fn insert(& mut self, key: String, value: Val){
+    pub fn set_map(&mut self, map: Map) -> &Self{
+        self.map = map;
+        self
+    }
+    pub fn add_alias(&mut self, key: String, value: Val){
         self.map.insert(key, value);
     }
 }

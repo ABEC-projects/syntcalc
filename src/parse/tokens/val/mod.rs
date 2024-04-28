@@ -24,7 +24,7 @@ pub struct Val{
 
 impl Default for Val{
     fn default() -> Self {
-        Val { unit: (D), magn: (1.), options: (ValOpts::default()) }
+        Val { unit: (D), magn: (1.), options: (ValOpts::default())}
     }
 }
 
@@ -38,7 +38,7 @@ impl Val{
         self
     }
 
-    pub fn pow(self, p:f64) -> Self{
+    pub fn pow(&self, p:f64) -> Self{
     let mut ret = Self::new(1., D);
     ret.unit = self.unit.pow(p);
     ret.magn = ret.magn.powf(p);
@@ -53,9 +53,48 @@ impl Val{
         };
         return self.unit.same_unit(&other.unit, precisionf);
     }
+
+    pub fn get_unit(&self) -> Unit{
+        self.unit
+    }
+    
+
+    pub fn get_magnetude(&self) -> f64{
+        self.magn
+    }
+    pub fn from_str(s: &str) -> Result<Self, String> {
+        use regex::Regex;
+        let regex_val = Regex::new(r"^(?<val>(?<int>-?\d+)(\.(?<fract>\d+)(E(?<exp>-?\d+))?)?)$").unwrap();
+        let Some(caps) = regex_val.captures(s) else {todo!()};
+        let whole = caps["val"].to_string();
+        if whole.len() != 0{
+            let base: u32 = 10;
+            let int_part = caps["int"].to_string();
+            let fract_part = caps["fract"].to_string();
+            let exponent_part = caps["exp"].to_string();
+            let neg =  if int_part.contains('-') {-1.} else {1.};
+
+            let mut magn = 0.;
+            magn += int_part.parse::<i64>().unwrap() as f64;
+            magn +=  neg*(fract_part.parse::<i64>().unwrap() as f64) /
+                ((base as f64).powi(fract_part.len() as i32));
+            magn *= base.pow(exponent_part.parse().unwrap()) as f64;
+
+            return Ok(Val::new(magn, D));
+        }else{
+            return Err("No value found in the string".to_string());
+        }
+    }
 }
 
-use std::ops;
+impl FromStr for Val{
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::from_str(s)
+    }
+}
+
+use std::{ops, str::FromStr};
 
 impl ops::Add for Val{
     type Output = Option<Self>;

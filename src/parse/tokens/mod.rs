@@ -1,5 +1,6 @@
 pub mod val;
 
+use regex::Regex;
 pub use val::Val as Val;
 pub enum Tokens{
     Op(Operator),
@@ -8,10 +9,12 @@ pub enum Tokens{
     Fn(Function),
 }
 
-pub fn tokenize(expr: String) -> Vec<Tokens>{
+pub fn tokenize(expr: &str) -> Result<Vec<Tokens>, String>{
     let pv = Vec::new();
+    let regex_val = Regex::new(r"^(?<val>\d+(\.\d+(E-?\d+)?)?)").unwrap();
+    let Some(caps) = regex_val.captures(expr) else {todo!()};
     
-    return pv;
+    return Ok(pv);
 }
 
 pub struct Operator {
@@ -26,10 +29,28 @@ enum Ops {
     Mod,
 }
 impl Operator {
-    fn new(op: &str) -> Self{
-        Operator{op:Ops::Add}
+    pub fn new(op: Ops) -> Self{
+        Operator { op }
+    }
+    pub fn from_str(s: &str) -> Result<Self, String>{
+        use Ops::*;
+        match match s{
+            "+" => Some(Add),
+            "-" => Some(Sub),
+            "*" => Some(Mul),
+            "/" => Some(Div),
+            "^" => Some(Pow),
+            "**" => Some(Pow),
+            "%" => Some(Mod),
+            _ => None,
+        }{
+        Some(op) => Ok(Self::new(op)),
+        None => Err(format!("No operator for {}", s)),
+        }
     }
 }
+
+
 
 pub struct Function{
     lambda: fn(Vec<Val>) -> Val,
