@@ -45,7 +45,7 @@ impl Operator {
             _ => None,
         }{
         Some(op) => Ok(Self::new(op)),
-        None => Err(format!("No operator for {}", s)),
+        None => Err(format!("No operator for {s}")),
         }
     }
 }

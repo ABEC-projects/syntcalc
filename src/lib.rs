@@ -42,10 +42,14 @@ mod test{
 
     #[test]
     fn tokens_from_str(){
-        let expr = "-123.12E0";
-        let res = -123.12;
-        let a = Val::from_str(expr).unwrap().get_magnetude();
-        assert_eq!(a, res);
+        let check = |s:&str, res: Val| {
+            assert_eq!(Val::from_str(s).unwrap(), res, "Initial string: {s}");
+        };
+        let tests = [("-0b11.11", Val::new(-3.75, D)), ("123.12E-1", Val::new(12.312, D)),
+            ("0o100E-2", Val::new(1., D))];
+        for t in tests {
+            check(t.0, t.1);
+        }
     }
 }
 

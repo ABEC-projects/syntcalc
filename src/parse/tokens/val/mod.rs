@@ -64,21 +64,59 @@ impl Val{
     }
     pub fn from_str(s: &str) -> Result<Self, String> {
         use regex::Regex;
-        let regex_val = Regex::new(r"^(?<val>(?<int>-?\d+)(\.(?<fract>\d+)(E(?<exp>-?\d+))?)?)$").unwrap();
-        let Some(caps) = regex_val.captures(s) else {todo!()};
-        let whole = caps["val"].to_string();
-        if whole.len() != 0{
-            let base: u32 = 10;
-            let int_part = caps["int"].to_string();
-            let fract_part = caps["fract"].to_string();
-            let exponent_part = caps["exp"].to_string();
-            let neg =  if int_part.contains('-') {-1.} else {1.};
+        // let regex_val = Regex::new(r"^(?<base>0[xbo])?(?<val>(?<int>-?\d+)(\.(?<fract>\d+)(E(?<exp>-?\d+))?)?)$").unwrap();
+        let regex_val = Regex::new(r"^(?<val>(?<neg>-)?(?<base>0[xbo])?(?<int>\d+)(\.(?<fract>\d+))?([Ee](?<exp>-?\d+))?)$").unwrap();
+        let Some(caps) = regex_val.captures(s) else {return Err("Wrong value format!".to_string())};
+        if let Some(_) = caps.name("val"){
+            let base:u32 = match caps.name("base"){
+                Some(s) => {
+                    match s.as_str(){
+                        "0b" => 2,
+                        "0o" => 8,
+                        "0x" => 16,
+                        _ => unreachable!(),
+                    }
+                },
+                None => 10,
+            };
+            let to_u64_base = |s:&str, base: u32|{
+                let len = s.len() as u32;
+                let mut ret:u64 = 0;
+                for i in 0..len{
+                    ret += (base as u64).pow(len-1-i)*
+                        s.chars().nth(i as usize).unwrap().to_string().parse::<u64>().unwrap();
+                }
+                ret 
+            };
+            let int_part: u64 = match caps.name("int") {
+                Some(s) => to_u64_base(s.as_str(), base),
+                None => unreachable!(),
+            };
+            let fract_part: f64 = match caps.name("fract"){
+                Some(s) => to_u64_base(s.as_str(), base) as f64,
+                None => 0.,
+            };
+            let fract_part_len: i32 = match caps.name("fract"){
+                Some(s) => s.as_str().len() as i32,
+                None => 0
+            };
+            let exponent_part: i32 = match caps.name("exp"){
+                Some(s) => {
+                    s.as_str().replace("-", "").parse::<i32>().unwrap()*
+                        (if  s.as_str().contains('-') {-1} else {1})
+                },
+                None => 0,
+            };
+            let neg: f64 = match caps.name("neg"){
+                Some(s) => if s.as_str().contains("-") {-1.} else {1.},
+                None => 1.,
+            };
 
             let mut magn = 0.;
-            magn += int_part.parse::<i64>().unwrap() as f64;
-            magn +=  neg*(fract_part.parse::<i64>().unwrap() as f64) /
-                ((base as f64).powi(fract_part.len() as i32));
-            magn *= base.pow(exponent_part.parse().unwrap()) as f64;
+            magn += neg*int_part as f64;
+            magn +=  neg*(fract_part as f64) /
+                ((base as f64).powi(fract_part_len));
+            magn *= (base as f64).powi(exponent_part);
 
             return Ok(Val::new(magn, D));
         }else{
