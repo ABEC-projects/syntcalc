@@ -1,11 +1,14 @@
 mod parse;
 use parse::*;
+
 #[cfg(test)]
 mod test{
-    use crate::tokens::val::{Unit, units::ValAlias};
+    use crate::tokens::val::Unit;
     use crate::{parse, tokens::Val};
     use super::tokens::val::base_units::*;
+    use crate::tokens::associations::ValAlias;
     use regex::Regex;
+    use crate::tokens::token_builder::Builder;
 
     #[test]
     fn check_function_token_compute() {
@@ -43,10 +46,12 @@ mod test{
     #[test]
     fn tokens_from_str(){
         let check = |s:&str, res: Val| {
-            assert_eq!(Val::from_str(s).unwrap(), res, "Initial string: {s}");
+            let bd = Builder::default();
+            assert_eq!(bd.val_from_str(s).unwrap(), res, "Initial string: {s}");
+            println!("{} and {:?} are equal", s, res);
         };
         let tests = [("-0b11.11", Val::new(-3.75, D)), ("123.12E-1", Val::new(12.312, D)),
-            ("0o100E-2", Val::new(1., D))];
+            ("0o100E-2", Val::new(1., D)), ("1.11E2kg", Val::new(111., KG))];
         for t in tests {
             check(t.0, t.1);
         }

@@ -1,17 +1,15 @@
 mod unit;
-pub mod units;
 pub use unit::Unit;
 use unit::base_units::*;
 pub use unit::base_units;
 
 #[derive(Debug, Clone)]
 pub struct ValOpts{
-    
+    cmp_epsilon: f64,
 }
 
-impl Default for ValOpts{
-    fn default() -> Self {
-        ValOpts{}
+impl Default for ValOpts{ fn default() -> Self {
+        ValOpts{cmp_epsilon: 0.0000001}
     }
 }
 
@@ -19,7 +17,7 @@ impl Default for ValOpts{
 pub struct Val{
     unit: Unit,
     magn: f64,
-    pub options: ValOpts
+    pub options: ValOpts,
 }
 
 impl Default for Val{
@@ -29,7 +27,7 @@ impl Default for Val{
 }
 
 impl Val{
-    pub fn new(magn:f64, unit: unit::Unit) -> Self{
+    pub fn new(magn:f64, unit: Unit) -> Self{
         Val{magn, unit, options: ValOpts::default()}
     }
 
@@ -39,10 +37,10 @@ impl Val{
     }
 
     pub fn pow(&self, p:f64) -> Self{
-    let mut ret = Self::new(1., D);
-    ret.unit = self.unit.pow(p);
-    ret.magn = ret.magn.powf(p);
-    ret
+        let mut ret = Self::new(1., D);
+        ret.unit = self.unit.pow(p);
+        ret.magn = ret.magn.powf(p);
+        ret
     }
 
     pub fn same_unit(&self, other: &Val, precision: Option<f64>) -> bool{
@@ -62,10 +60,11 @@ impl Val{
     pub fn get_magnetude(&self) -> f64{
         self.magn
     }
-    pub fn from_str(s: &str) -> Result<Self, String> {
+    pub fn from_str(s: &str, al: &ValAlias) -> Result<Self, String> {
         use regex::Regex;
-        // let regex_val = Regex::new(r"^(?<base>0[xbo])?(?<val>(?<int>-?\d+)(\.(?<fract>\d+)(E(?<exp>-?\d+))?)?)$").unwrap();
-        let regex_val = Regex::new(r"^(?<val>(?<neg>-)?(?<base>0[xbo])?(?<int>\d+)(\.(?<fract>\d+))?([Ee](?<exp>-?\d+))?)$").unwrap();
+        let reg = 
+            r"^(?<val>(?<neg>-)?(?<base>0[xbo])?(?<int>\d+)(\.(?<fract>\d+))?([Ee](?<exp>-?\d+))?)(?<unit>\w+)?";
+        let regex_val = Regex::new(reg).unwrap();
         let Some(caps) = regex_val.captures(s) else {return Err("Wrong value format!".to_string())};
         if let Some(_) = caps.name("val"){
             let base:u32 = match caps.name("base"){
@@ -102,7 +101,7 @@ impl Val{
             };
             let exponent_part: i32 = match caps.name("exp"){
                 Some(s) => {
-                    s.as_str().replace("-", "").parse::<i32>().unwrap()*
+                    s.as_str().replace("-", "").parse::<i32>().unwrap() *
                         (if  s.as_str().contains('-') {-1} else {1})
                 },
                 None => 0,
@@ -111,28 +110,32 @@ impl Val{
                 Some(s) => if s.as_str().contains("-") {-1.} else {1.},
                 None => 1.,
             };
-
+            
             let mut magn = 0.;
             magn += neg*int_part as f64;
             magn +=  neg*(fract_part as f64) /
                 ((base as f64).powi(fract_part_len));
             magn *= (base as f64).powi(exponent_part);
 
-            return Ok(Val::new(magn, D));
+            let mut ret = Val::new(magn, D);
+            ret *= match caps.name("unit"){
+                Some(s) => {match al.get_val(s.as_str()){
+                    Some(v) => v,
+                    None => return Err(format!("No {} found", s.as_str())),
+                }},
+                None => Val::new(1., D),
+            };
+            return Ok(ret);
         }else{
             return Err("No value found in the string".to_string());
         }
     }
 }
 
-impl FromStr for Val{
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::from_str(s)
-    }
-}
 
 use std::{ops, str::FromStr};
+
+use super::associations::ValAlias;
 
 impl ops::Add for Val{
     type Output = Option<Self>;
@@ -202,7 +205,8 @@ impl ops::DivAssign for Val {
 
 impl std::cmp::PartialEq for Val{
     fn eq(&self, other: &Self) -> bool {
-        return self.magn == other.magn && self.unit == other.unit;
+        return (self.magn.abs()-other.magn.abs()).abs() < self.options.cmp_epsilon &&
+                self.same_unit(&other, None);
     }
 }
 

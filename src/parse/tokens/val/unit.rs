@@ -31,11 +31,13 @@ impl Unit {
     pub fn same_unit(self, other: &Unit, precision: f64) -> bool{
         let mut flag = true;
         for i in 0..7 {
-            flag = flag && self.dim[i] - precision/2. < other.dim[i] && self.dim[i] + precision/2. > other.dim[i];  
+            flag = flag && self.dim[i] - precision/2. < other.dim[i] &&
+                self.dim[i] + precision/2. > other.dim[i];  
         }
         flag
         
     }
+    
 }
 
 impl std::cmp::PartialEq for Unit {
