@@ -1,5 +1,5 @@
 mod parse;
-use parse::*;
+mod tokens;
 
 #[cfg(test)]
 mod test{
@@ -7,12 +7,11 @@ mod test{
     use crate::{parse, tokens::Val};
     use super::tokens::val::base_units::*;
     use crate::tokens::associations::ValAlias;
-    use regex::Regex;
     use crate::tokens::token_builder::Builder;
 
     #[test]
     fn check_function_token_compute() {
-        use super::parse::tokens::Function;
+        use super::tokens::Function;
         let a = Function::new(|b|{
             return b[0].clone()*Val::new(1./3., D);
         }, 1);
