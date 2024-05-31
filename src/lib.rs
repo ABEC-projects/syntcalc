@@ -1,5 +1,6 @@
 mod parse;
 mod tokens;
+pub use parse::*;
 
 #[cfg(test)]
 mod test{
@@ -55,5 +56,6 @@ mod test{
             check(t.0, t.1);
         }
     }
+
 }
 

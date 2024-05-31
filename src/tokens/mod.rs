@@ -11,16 +11,9 @@ pub enum Tokens{
     Fn(Function),
 }
 
-pub fn tokenize(expr: &str) -> Result<Vec<Tokens>, String>{
-    let pv = Vec::new();
-    let regex_val = Regex::new(r"^(?<val>\d+(\.\d+(E-?\d+)?)?)").unwrap();
-    let Some(caps) = regex_val.captures(expr) else {todo!()};
-    
-    return Ok(pv);
-}
 
 pub struct Operator {
-    op: Ops,
+    kind: Ops,
 }
 enum Ops {
     Add,
@@ -32,7 +25,7 @@ enum Ops {
 }
 impl Operator {
     pub fn new(op: Ops) -> Self{
-        Operator { op }
+        Operator { kind: op }
     }
     pub fn from_str(s: &str) -> Result<Self, String>{
         use Ops::*;

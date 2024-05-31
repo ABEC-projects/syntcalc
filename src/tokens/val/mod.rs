@@ -63,7 +63,7 @@ impl Val{
     pub fn from_str(s: &str, al: &ValAlias) -> Result<Self, String> {
         use regex::Regex;
         let reg = 
-            r"^(?<val>(?<neg>-)?(?<base>0[xbo])?(?<int>\d+)(\.(?<fract>\d+))?([Ee](?<exp>-?\d+))?)(?<unit>\w+)?";
+            r"^(?<val>(?<neg>-)?(?<base>0[xbo])?(?<int>\d+)(\.(?<fract>\d+))?([Ee](?<exp>-?\d+))?)?(?<unit>\w+)?";
         let regex_val = Regex::new(reg).unwrap();
         let Some(caps) = regex_val.captures(s) else {return Err("Wrong value format!".to_string())};
         if let Some(_) = caps.name("val"){
