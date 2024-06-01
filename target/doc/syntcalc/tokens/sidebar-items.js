@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["Tokens"],"mod":["associations","token_builder","val"],"struct":["Brace","Function","Operator"]};

@@ -1,3 +1,0 @@
-(function() {var implementors = {
-"syntcalc":[["impl <a class=\"trait\" href=\"https://docs.rs/pest/pest/parser/trait.Parser.html\" title=\"trait pest::parser::Parser\">Parser</a>&lt;<a class=\"enum\" href=\"syntcalc/parse/enum.Rule.html\" title=\"enum syntcalc::parse::Rule\">Rule</a>&gt; for <a class=\"struct\" href=\"syntcalc/parse/struct.MathParser.html\" title=\"struct syntcalc::parse::MathParser\">MathParser</a>"]]
-};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

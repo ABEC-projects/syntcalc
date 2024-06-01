@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["A","CD","D","K","KG","M","MOL","S"]};
