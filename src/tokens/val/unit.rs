@@ -13,9 +13,10 @@ pub mod base_units{
 /// # Struct that represents number's Unit
 /// Essentially, it's a vector with 7 floats,
 /// each representing power of one of the base units
-/// ## E. g. 1 mol/m^3 is 
+/// ## E. g. mol/m^3 is 
 /// ```rust
-/// Unit{dim:[0., 0., -3., 0., 0., 1., 0.]}
+/// use syntcalc::tokens::val::unit::Unit;
+/// Unit::new([0., 0., -3., 0., 0., 1., 0.]);
 /// ```
 #[derive(Clone, Copy, Debug)]
 pub struct Unit{

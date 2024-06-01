@@ -1,5 +1,5 @@
-mod parse;
-mod tokens;
+pub mod parse;
+pub mod tokens;
 pub use parse::*;
 
 #[cfg(test)]

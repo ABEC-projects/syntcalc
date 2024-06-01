@@ -1,25 +1,15 @@
+pub mod unit;
+mod errors;
+
 pub use unit::base_units;
 pub use unit::Unit;
+pub use errors::ValComputeError;
+pub use errors::ErrorType as ValComputeErrorType;
 
-mod unit;
+
 use unit::base_units::*;
-use std::error::Error;
-use std::fmt::{Display, Formatter};
 
 
-/// Error for math value
-/// E. g. trying to sum numbers with different units
-#[derive(Debug)]
-pub struct ValComputeError{
-    desc: String,
-}
-
-impl Display for ValComputeError{
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.desc)
-    }
-}
-impl Error for ValComputeError{}
 
 #[derive(Debug, Clone)]
 pub struct ValOpts{
@@ -65,7 +55,9 @@ impl Val{
     pub fn pow_val(&self, p: &Val) -> Result<Self, ValComputeError>{
         let mut ret = Self::new(1., D);
         if !p.get_unit().same_unit( &base_units::D, self.options.cmp_epsilon){
-            return Err(ValComputeError{desc: "Cannot raise to non-integer".to_string()});
+            return Err(ValComputeError::new(
+                    "Incompatible units".to_string(),
+                    ValComputeErrorType::IncompatibleUnits));
         }
         let p = p.magn;
         ret.unit = self.unit.pow(p);
@@ -170,9 +162,10 @@ impl ops::Add for Val{
         if self.unit == rhs.unit {
             ret.magn += rhs.magn;
         }else{
-            return Err(ValComputeError{
-                desc: "Units should be the same for additon".to_string()
-            });
+            return Err(ValComputeError::new(
+                "Units should be the same for addition".to_string(),
+                ValComputeErrorType::IncompatibleUnits
+            ));
         }
 
         Ok(ret)
@@ -187,9 +180,10 @@ impl ops::Sub for Val{
         if self.unit == rhs.unit {
             ret.magn += rhs.magn;
         }else{
-            return Err(ValComputeError{
-                desc: "Units should be the same for subtraction".to_string()               
-            });
+            return Err(ValComputeError::new(
+                "Units should be the same for addition".to_string(),
+                ValComputeErrorType::IncompatibleUnits
+                    ));
         }
 
         Ok(ret)
