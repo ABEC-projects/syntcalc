@@ -66,6 +66,7 @@ impl SyntCalc {
         todo!()
     }
 
+    /// makes operation tree considering operators' precedence
     fn shounting_yard(val_op_sequence: Vec<Expr>) -> Result<Tree, ParseError> {
         let mut reversed_polish: Vec<Expr> = Vec::new();
         todo!()

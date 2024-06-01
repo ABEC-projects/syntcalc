@@ -1,7 +1,25 @@
-mod unit;
-pub use unit::Unit;
-use unit::base_units::*;
 pub use unit::base_units;
+pub use unit::Unit;
+
+mod unit;
+use unit::base_units::*;
+use std::error::Error;
+use std::fmt::{Display, Formatter};
+
+
+/// Error for math value
+/// E. g. trying to sum numbers with different units
+#[derive(Debug)]
+pub struct ValComputeError{
+    desc: String,
+}
+
+impl Display for ValComputeError{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.desc)
+    }
+}
+impl Error for ValComputeError{}
 
 #[derive(Debug, Clone)]
 pub struct ValOpts{
@@ -13,6 +31,7 @@ impl Default for ValOpts{ fn default() -> Self {
     }
 }
 
+/// Struct that represents a mathematical value with unit
 #[derive(Clone, Debug)]
 pub struct Val{
     unit: Unit,
@@ -43,19 +62,25 @@ impl Val{
         ret
     }
 
-    pub fn same_unit(&self, other: &Val, precision: Option<f64>) -> bool{
-        let precisionf;
-        match precision {
-            Some(x) => precisionf = x,
-            None => precisionf = 0.02,
-        };
+    pub fn pow_val(&self, p: &Val) -> Result<Self, ValComputeError>{
+        let mut ret = Self::new(1., D);
+        if !p.get_unit().same_unit( &base_units::D, self.options.cmp_epsilon){
+            return Err(ValComputeError{desc: "Cannot raise to non-integer".to_string()});
+        }
+        let p = p.magn;
+        ret.unit = self.unit.pow(p);
+        ret.magn = ret.magn.powf(p);
+        Ok(ret)
+    }
+
+    pub fn same_unit(&self, other: &Val) -> bool{
+        let precisionf = self.options.cmp_epsilon;
         return self.unit.same_unit(&other.unit, precisionf);
     }
 
     pub fn get_unit(&self) -> Unit{
         self.unit
     }
-    
 
     pub fn get_magnetude(&self) -> f64{
         self.magn
@@ -138,32 +163,36 @@ use std::{ops, str::FromStr};
 use super::associations::ValAlias;
 
 impl ops::Add for Val{
-    type Output = Option<Self>;
+    type Output = Result<Self, ValComputeError>;
     fn add(self, rhs: Self) -> Self::Output {
         let mut ret = self.clone();
 
         if self.unit == rhs.unit {
             ret.magn += rhs.magn;
         }else{
-            return Option::None;
+            return Err(ValComputeError{
+                desc: "Units should be the same for additon".to_string()
+            });
         }
 
-        Some(ret)
+        Ok(ret)
     }
 }
 
 impl ops::Sub for Val{
-    type Output = Option<Self>;
+    type Output = Result<Self, ValComputeError>;
     fn sub(self, rhs: Self) -> Self::Output {
         let mut ret = self.clone();
 
         if self.unit == rhs.unit {
             ret.magn += rhs.magn;
         }else{
-            return Option::None;
+            return Err(ValComputeError{
+                desc: "Units should be the same for subtraction".to_string()               
+            });
         }
 
-        Some(ret)
+        Ok(ret)
     }
 }
 
@@ -206,7 +235,7 @@ impl ops::DivAssign for Val {
 impl std::cmp::PartialEq for Val{
     fn eq(&self, other: &Self) -> bool {
         return (self.magn.abs()-other.magn.abs()).abs() < self.options.cmp_epsilon &&
-                self.same_unit(&other, None);
+                self.same_unit(&other);
     }
 }
 

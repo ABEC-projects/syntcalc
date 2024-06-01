@@ -2,6 +2,7 @@ pub mod val;
 pub mod token_builder;
 pub mod associations;
 
+use val::ValComputeError;
 use regex::Regex;
 pub use val::Val as Val;
 pub enum Tokens{
@@ -12,6 +13,7 @@ pub enum Tokens{
 }
 
 
+/// A binary operator struct
 pub struct Operator {
     kind: Ops,
 }
@@ -24,7 +26,7 @@ enum Ops {
     Mod,
 }
 impl Operator {
-    pub fn new(op: Ops) -> Self{
+    fn new(op: Ops) -> Self{
         Operator { kind: op }
     }
     pub fn from_str(s: &str) -> Result<Self, String>{
@@ -43,7 +45,19 @@ impl Operator {
             None => Err(format!("No operator for {s}")),
         }
     }
+    pub fn compute(&self, lhs: Val, rhs: Val) -> Result<Val, ValComputeError> {
+        use Ops::*;
+        match self.kind {
+            Add => lhs + rhs,
+            Sub => lhs - rhs,
+            Mul => Ok(lhs * rhs),
+            Div => Ok(lhs / rhs),
+            Pow => lhs.pow_val(&rhs),
+            Mod => todo!(),
+        }
+    }
 }
+
 
 #[derive(Clone, Copy)]
 pub struct Function{

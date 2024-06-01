@@ -26,10 +26,8 @@ mod test{
         let b = Val::new(1., D);
         let c = Val::new(1., KG);
         let d = Val::new(1., Unit::new([0.,0.001, 0., 0., 0., 0., 0.]));
-        assert_eq!(a.same_unit(&b, None), true);
-        assert_eq!(a.same_unit(&c, None), false);
-        assert_eq!(a.same_unit(&d, None), true);
-        assert_eq!(a.same_unit(&d, Some(0.0001)), false);
+        assert_eq!(a.same_unit(&b), true);
+        assert_eq!(a.same_unit(&c), false);
     }
 
     #[test]
