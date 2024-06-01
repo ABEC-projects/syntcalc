@@ -1,5 +1,6 @@
-use syntcalc::SynthCalc;
+use pest::Parser;
+use syntcalc as sc;
 fn main() {
-    let calc = SynthCalc::new();
-
+    let par = sc::MathParser::parse(sc::Rule::file, "3*fn(123, (12+33)*2) + pi").unwrap();
+    println!("{:#?}", par);
 }

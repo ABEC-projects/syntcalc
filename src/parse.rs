@@ -24,14 +24,21 @@ enum Expr {
     Infix(Operator), // TODO: change Operator to Infix
     Postfixfix(Operator), // TODO: change Operator to Postfixfix
 }
+enum Tree {
+    Infix(Operator, Box<Tree>, Box<Tree>),
+    Prefix(Operator, Box<Tree>),
+    Postfixfix(Operator, Box<Tree>),
+    Val(Val),
+}
 
-pub struct SynthCalc{
+#[derive(Default)]
+pub struct SyntCalc{
     token_builder: Builder,
 }
 
 /// Main class for synthcalc crate.
 /// Used to parse expressions and evaluate them with eval_str() function.
-impl SynthCalc {
+impl SyntCalc {
     pub fn eval_str(&self, expr: &str) -> Result<Val, ParseError>{
         let parsed = match MathParser::parse(Rule::file, expr){
             Ok(parsed) => parsed,
@@ -51,10 +58,36 @@ impl SynthCalc {
                 Rule::func => val_op_sequence.push(
                     Expr::Val(self.token_builder.function_from_str(pair.as_str()).unwrap().compute(
                             self.get_args_from_func_pair(&pair).unwrap()).unwrap())),
-                _ => unreachable!(),
+                Rule::expr => val_op_sequence.push(
+                    Expr::Val(self.eval_parsed(pair.into_inner())?)),
+                _ => todo!("unimplemented rule: {:?}", pair.as_rule()),
             }
         }
         todo!()
+    }
+
+    fn shounting_yard(val_op_sequence: Vec<Expr>) -> Result<Tree, ParseError> {
+        let mut reversed_polish: Vec<Expr> = Vec::new();
+        todo!()
+    }
+
+    fn compute_tree_branch(branch: &Tree) -> Result<Val, ParseError> {
+        match branch {
+            Tree::Val(val) => Ok(val.clone()),
+            Tree::Infix(op, lhs, rhs) => {
+                let l_val = Self::compute_tree_branch(lhs)?;
+                let r_val = Self::compute_tree_branch(rhs)?;
+                todo!()
+            }
+            Tree::Prefix(op, rhs) => {
+                let r_val = Self::compute_tree_branch(rhs)?;
+                todo!()
+            }
+            Tree::Postfixfix(op, lhs) => {
+                let l_val = Self::compute_tree_branch(lhs)?;
+                todo!()
+            }
+        }
     }
 
     fn get_args_from_func_pair(&self, pair: &pest::iterators::Pair<Rule>) -> Option<Vec<Val>> {
@@ -74,6 +107,7 @@ impl SynthCalc {
         }
     }
 }
+
 
 
 
