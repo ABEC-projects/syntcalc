@@ -1,6 +1,7 @@
+
 use super::val::{ValOpts, base_units::*};
 use super::associations::{ValAlias, FnAlias};
-use super::{Function, Val, Brace, Operator};
+use super::{BinOperator, Brace, Function, UnOperator, Val};
 
 pub struct Builder{
     val_opts: ValOpts,
@@ -20,11 +21,11 @@ impl Builder{
     pub fn val_from_str(&self, s: &str) -> Result<Val, String>{
         Val::from_str(s, &self.val_alias)
     }
-    pub fn op_from_str(&self, s: &str) -> Result<Operator, String>{
-        Operator::from_str(s)
+    pub fn bin_op_from_str(&self, s: &str) -> Result<BinOperator, String>{
+        BinOperator::from_str(s)
     }
-    pub fn brace_from_str(&self, s: &str) -> Result<Brace, String>{
-        Brace::from_str(s)
+    pub fn un_op_from_str(&self, s: &str) -> Result<UnOperator, String>{
+        UnOperator::from_str(s)
     }
     pub fn function_from_str(&self, s: &str) -> Result<Function, String>{
          Function::from_str(s, &self.func_alias)

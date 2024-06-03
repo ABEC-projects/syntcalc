@@ -1,10 +1,11 @@
-use super::tokens::{Val, Operator, Function};
+use super::tokens::{Val, BinOperator, UnOperator, Operator Function};
 use super::tokens::token_builder::Builder;
 use pest::{self, Parser};
 use pest_derive::Parser;
 use std::collections::{VecDeque};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
+use std::ops::Deref;
 
 #[derive(Debug)]
 pub struct ParseError{
@@ -18,16 +19,17 @@ impl Display for ParseError{
 }
 impl Error for ParseError{}
 
+#[derive(Clone)]
 enum Expr {
     Val(Val),
-    Prefix(Operator),
-    Infix(Operator), // TODO: change Operator to Infix
-    Postfixfix(Operator), // TODO: change Operator to Postfixfix
+    Prefix(BinOperator),
+    Infix(UnOperator),
+    Postfixfix(UnOperator),
 }
 enum Tree {
-    Infix(Operator, Box<Tree>, Box<Tree>),
-    Prefix(Operator, Box<Tree>),
-    Postfixfix(Operator, Box<Tree>),
+    Infix(BinOperator, Box<Tree>, Box<Tree>),
+    Prefix(BinOperator, Box<Tree>),
+    Postfixfix(BinOperator, Box<Tree>),
     Val(Val),
 }
 
@@ -54,7 +56,7 @@ impl SyntCalc {
                 Rule::number => val_op_sequence.push(
                     Expr::Val(self.token_builder.val_from_str(pair.as_str()).unwrap())),
                 Rule::infix => val_op_sequence.push(
-                    Expr::Infix(Operator::from_str(pair.as_str()).unwrap())),
+                    Expr::Infix(UnOperator::from_str(pair.as_str()).unwrap())),
                 Rule::func => val_op_sequence.push(
                     Expr::Val(self.token_builder.function_from_str(pair.as_str()).unwrap().compute(
                             self.get_args_from_func_pair(&pair).unwrap()).unwrap())),
@@ -63,12 +65,28 @@ impl SyntCalc {
                 _ => todo!("unimplemented rule: {:?}", pair.as_rule()),
             }
         }
+        let tree = Self::shounting_yard(&val_op_sequence)?;
         todo!()
     }
 
     /// makes operation tree considering operators' precedence
-    fn shounting_yard(val_op_sequence: Vec<Expr>) -> Result<Tree, ParseError> {
+    fn shounting_yard(val_op_sequence: &Vec<Expr>) -> Result<Tree, ParseError> {
+        let mut val_op_sequence = VecDeque::from((*val_op_sequence).clone());
         let mut reversed_polish: Vec<Expr> = Vec::new();
+        let mut op_stack: Vec<Box<dyn Operator>> = Vec::new();
+
+        for val_op in val_op_sequence {
+            match val_op {
+                Expr::Val(_) => reversed_polish.push(val_op),
+                Expr::Infix(op) => {
+                    if op.get_precedence() > op_stack.last().unwrap().deref().get_precedence() {
+                        reversed_polish.push(op_stack.pop().unwrap());
+                        op_stack.push(Box::new(op));
+                    }
+                }
+                _ => todo!(),
+            }
+        }
         todo!()
     }
 
