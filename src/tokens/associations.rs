@@ -66,6 +66,9 @@ impl Default for FnAlias {
         map.insert("sin".to_string(), Function { lambda: 
             |x|{Val::new(x[0].get_magnetude().sin(), x[0].get_unit())},
             argc: (1) });
+        map.insert("arcsin".to_string(), Function { lambda: 
+            |x|{Val::new(x[0].get_magnetude().asin(), x[0].get_unit())},
+            argc: (1) });
         Self {map}
     }
 }

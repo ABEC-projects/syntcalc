@@ -88,7 +88,10 @@ impl SyntCalc {
 
     fn eval_parsed(&self, parsed: pest::iterators::Pairs<Rule>) -> Result<Val, ParseError> {
         let mut val_op_sequence = Vec::new();
+        // println!("parsed: {:#?}", parsed);
         for pair in parsed {
+            // println!("pair: {}", pair);
+            // println!("val_op_sequence: {:#?}\n", val_op_sequence);
             match pair.as_rule() {
                 Rule::file => val_op_sequence.push(Expr::Val(self.eval_parsed(pair.into_inner())?)),
                 Rule::number => val_op_sequence.push(
@@ -96,7 +99,7 @@ impl SyntCalc {
                 Rule::infix => val_op_sequence.push(
                     Expr::Infix(BinOperator::from_str(pair.as_str()).unwrap())),
                 Rule::func => val_op_sequence.push(
-                    Expr::Val(self.token_builder.function_from_str(pair.as_str()).unwrap().compute(
+                    Expr::Val(self.token_builder.function_from_str(pair.clone().into_inner().next().unwrap().as_str()).unwrap().compute(
                             self.get_args_from_func_pair(&pair).unwrap()).unwrap())),
                 Rule::expr => val_op_sequence.push(
                     Expr::Val(self.eval_parsed(pair.into_inner())?)),
@@ -104,6 +107,7 @@ impl SyntCalc {
                 Rule::mul => val_op_sequence.push(Expr::Infix(BinOperator::from_str("*").unwrap())),
                 Rule::neg => val_op_sequence.push(Expr::Prefix(UnOperator::from_str("-").unwrap())),
                 Rule::fac => val_op_sequence.push(Expr::Postfixfix(UnOperator::from_str("!").unwrap())),
+                Rule::div => val_op_sequence.push(Expr::Infix(BinOperator::from_str("/").unwrap())),
                 Rule::EOI => break,
                 _ => todo!("unimplemented rule: {:?}", pair.as_rule()),
             }
@@ -136,7 +140,7 @@ impl SyntCalc {
                     }
                     op_stack.push(Op::Bin(op));
                 }
-                Expr::Prefix(op) => {
+                Expr::Prefix(op) | Expr::Postfixfix(op) => {
                     while op_stack.len() > 0 {
                         if let Some(last_op) = op_stack.last() {
                             if op.get_precedence() < last_op.get_precedence() || 
@@ -148,18 +152,6 @@ impl SyntCalc {
                     }
                     op_stack.push(Op::Un(op));
                 },
-                Expr::Postfixfix(op) => {
-                    while op_stack.len() > 0 {
-                        if let Some(last_op) = op_stack.last() {
-                            if op.get_precedence() < last_op.get_precedence() || 
-                                op.get_precedence() == last_op.get_precedence() && op.get_associativity() == Associativity::Left {
-                                reversed_polish.push(op_stack.pop().unwrap().as_expr());
-                            }
-                            else {break;}
-                        }
-                    }
-                    op_stack.push(Op::Un(op));
-                }
             }
         }
 
@@ -186,7 +178,6 @@ impl SyntCalc {
                 if counter == 0 {break;}
                 counter -= 1;
             }
-            println!("Vos: {:?}", val_op_sequence);
             last_vals
         };
         let mut i = 0;
@@ -236,10 +227,16 @@ impl SyntCalc {
             Rule::func => {
                 let mut args = Vec::new();
                 for arg in pair.clone().into_inner() {
-                    let arg_val = self.eval_parsed(arg.into_inner());
-                    match arg_val {
-                        Ok(val) => args.push(val),
-                        Err(_) => return None,
+                    match arg.as_rule() {
+                        Rule::args =>{
+                            let arg_val = self.eval_parsed(arg.into_inner());
+                            match arg_val {
+                                Ok(val) => args.push(val),
+                                Err(_) => return None,
+                            }
+                        }
+                        Rule::name => (), 
+                        _ => unreachable!(),
                     }
                 }
                 return Some(args);
@@ -260,7 +257,13 @@ mod tests{
 
     #[test]
     fn some_check(){
-        let a = SyntCalc::default().eval_str("-1+2+3*4+5").unwrap().get_magnetude();
-        assert_eq!(a, 18.);
+        let a = SyntCalc::default().eval_str(
+            "-1+sin(arcsin(0))+3*4+5"
+            ).unwrap().get_magnetude();
+        let b = SyntCalc::default().eval_str(
+            "2km*3"
+        ).unwrap().get_magnetude();
+        assert_eq!(a, 16.);
+        assert_eq!(b, 6000.)
     }
 }
