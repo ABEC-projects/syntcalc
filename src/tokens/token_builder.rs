@@ -30,4 +30,7 @@ impl Builder{
     pub fn function_from_str(&self, s: &str) -> Result<Function, String>{
          Function::from_str(s, &self.func_alias)
     }
+    pub fn get_var_val(&self, s: &str) -> Result<Val, String>{
+        self.val_alias.get_val(s).ok_or_else(|| format!("Fariable {} not found", s))
+    }
 }

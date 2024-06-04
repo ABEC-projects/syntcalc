@@ -103,6 +103,7 @@ impl SyntCalc {
                             self.get_args_from_func_pair(&pair).unwrap()).unwrap())),
                 Rule::expr => val_op_sequence.push(
                     Expr::Val(self.eval_parsed(pair.into_inner())?)),
+                Rule::var => val_op_sequence.push(Expr::Val(self.token_builder.get_var_val(pair.as_str()).unwrap())),
                 Rule::add => val_op_sequence.push(Expr::Infix(BinOperator::from_str("+").unwrap())),
                 Rule::mul => val_op_sequence.push(Expr::Infix(BinOperator::from_str("*").unwrap())),
                 Rule::neg => val_op_sequence.push(Expr::Prefix(UnOperator::from_str("-").unwrap())),
@@ -258,7 +259,7 @@ mod tests{
     #[test]
     fn some_check(){
         let a = SyntCalc::default().eval_str(
-            "-1+sin(arcsin(0))+3*4+5"
+            "-1+sin(arcsin(0))+sin(pi)+3*4+5"
             ).unwrap().get_magnetude();
         let b = SyntCalc::default().eval_str(
             "2km*3"

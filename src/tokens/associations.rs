@@ -19,7 +19,7 @@ impl Default for ValAlias {
         map.insert(String::from("s"), Val::new(1., S));
         map.insert(String::from("J"), Val::new(1., KG*M.pow(2.)/S.pow(2.)));
         map.insert(String::from("W"), Val::new(1., KG*M.pow(2.)/S.pow(3.)));
-        map.insert(String::from("pi"), Val::new(3.14159265359, D));
+        map.insert(String::from("pi"), Val::new(3.141592653589793238462643383279502, D));
 
         ValAlias{map}
     }
