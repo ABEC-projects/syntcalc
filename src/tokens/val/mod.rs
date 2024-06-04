@@ -26,13 +26,7 @@ impl Default for ValOpts{ fn default() -> Self {
 pub struct Val{
     unit: Unit,
     magn: f64,
-    pub options: ValOpts,
-}
-
-impl Default for Val{
-    fn default() -> Self {
-        Val { unit: (D), magn: (1.), options: (ValOpts::default())}
-    }
+    options: ValOpts,
 }
 
 impl Val{
@@ -63,6 +57,12 @@ impl Val{
         ret.unit = self.unit.pow(p);
         ret.magn = ret.magn.powf(p);
         Ok(ret)
+    }
+
+    pub fn factorial(&self) -> Self{
+        let mut ret = Self::new(1., D);
+        todo!();
+        ret
     }
 
     pub fn same_unit(&self, other: &Val) -> bool{
@@ -149,7 +149,20 @@ impl Val{
     }
 }
 
+impl Display for Val{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "todo:{}{:?}", self.magn, self.unit)
+    }
+}
 
+impl Default for Val{
+    fn default() -> Self {
+        Val { unit: (D), magn: (1.), options: (ValOpts::default())}
+    }
+}
+
+
+use std::fmt::Display;
 use std::{ops, str::FromStr};
 
 use super::associations::ValAlias;
@@ -187,6 +200,15 @@ impl ops::Sub for Val{
         }
 
         Ok(ret)
+    }
+}
+
+impl ops::Neg for Val{
+    type Output = Self;
+    fn neg(self) -> Self::Output {
+        let mut ret = self.clone();
+        ret.magn = -ret.magn;
+        ret
     }
 }
 

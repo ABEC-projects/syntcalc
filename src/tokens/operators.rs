@@ -1,14 +1,23 @@
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 
 use super::{val::ValComputeError, Val};
 
-pub trait Operator {
-    fn compute(&self, lhs: Val, rhs: Val) -> Result<Val, ValComputeError>;
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Associativity {
+    Left,
+    Right,
+    Non,
+}
+
+
+pub trait Operator  where Self: Clone{
     fn from_str(s: &str) -> Result<Self, String> where Self: Sized;
     fn get_precedence(&self) -> u32;
+    fn get_associativity(&self) -> Associativity;
 }
 
 /// A binary operator struct
+#[derive(Clone, Copy, Debug)]
 enum BinOps {
     Add,
     Sub,
@@ -18,13 +27,15 @@ enum BinOps {
     Mod,
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct BinOperator {
     kind: BinOps,
     precedence: u32,
+    associativity: Associativity,
 }
 impl BinOperator {
-    fn new(op: BinOps, precedence: u32) -> Self{
-        BinOperator { kind: op, precedence }
+    fn new(op: BinOps, precedence: u32, associativity: Associativity) -> Self{
+        BinOperator { kind: op, precedence, associativity }
     }
     pub fn compute(&self, lhs: Val, rhs: Val) -> Result<Val, ValComputeError> {
         use BinOps::*;
@@ -39,22 +50,41 @@ impl BinOperator {
     }
     pub fn from_str(s: &str) -> Result<Self, String> {
         use BinOps::*;
+        use Associativity::*;
         match match s{
-            "+" => Some((Add, 2)),
-            "-" => Some((Sub, 2)),
-            "*" => Some((Mul, 4)),
-            "/" => Some((Div, 4)),
-            "^" => Some((Pow, 6)),
-            "**" => Some((Pow, 6)),
-            "%" => Some((Mod, 6)),
+            "+" => Some((Add, 2, Left)),
+            "-" => Some((Sub, 2, Left)),
+            "*" => Some((Mul, 4, Left)),
+            "/" => Some((Div, 4, Left)),
+            "^" => Some((Pow, 6, Right)),
+            "**" => Some((Pow, 6, Right)),
+            "%" => Some((Mod, 6, Left)),
             _ => None,
         }{
-            Some((op, prec)) => Ok(Self::new(op, prec)),
+            Some((op, prec, ass)) => Ok(Self::new(op, prec, ass)),
             None => Err(format!("No such operator: '{s}'")),
         }
     }
     pub fn get_precedence(&self) -> u32{
         self.precedence
+    }
+    pub fn get_associativity(&self) -> Associativity{
+        self.associativity
+    }
+}
+
+impl Display for BinOperator{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use BinOps::*;
+        let name = match self.kind{
+            Add => "+",
+            Sub => "-",
+            Mul => "*",
+            Div => "/",
+            Pow => "^",
+            Mod => "%",
+        };
+        write!(f, "{}", name)
     }
 }
 
@@ -65,47 +95,73 @@ impl FromStr for BinOperator {
     }
 }
 impl Operator for BinOperator{
-    fn compute(&self, lhs: Val, rhs: Val) -> Result<Val, ValComputeError> {
-        self.compute(lhs, rhs)
-    }
     fn from_str(s: &str) -> Result<Self, String> {
         Self::from_str(s)
     }
     fn get_precedence(&self) -> u32 {
         self.get_precedence()
     }
+    fn get_associativity(&self) -> Associativity {
+        self.get_associativity()
+    }
 }
 
-enum UnOps {
+#[derive(Clone, Copy, Debug)]
+pub enum UnOps {
     Neg, 
     Fac,
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct UnOperator{
-    op: UnOps,
+    kind: UnOps,
     precedence: u32,
+    associativity: Associativity,
 }
 
 impl UnOperator{
-    fn new(op: UnOps) -> Self{
-        UnOperator{op, precedence:100}
+    fn new(kind: UnOps, precedence: u32, associativity: Associativity) -> Self{
+        UnOperator{kind, precedence, associativity}
     }
     pub fn from_str(s: &str) -> Result<Self, String> {
         use UnOps::*;
+        use Associativity::*;
         match match s{
-            "-" => Some(Neg),
-            "!" => Some(Fac),
+            "-" => Some((Neg, 10, Right)),
+            "!" => Some((Fac, 15, Left)),
             _ => None,
         }{
-            Some(op) => Ok(Self::new(op)),
+            Some((op, prec, ass)) => Ok(Self::new(op, prec, ass)),
             None => Err(format!("No such operator: '{s}'")),
+        }
+    }
+    pub fn compute(&self, val: Val) -> Result<Val, ValComputeError> {
+        use UnOps::*;
+        match self.kind {
+            Neg => Ok(-val),
+            Fac => Ok(val.factorial()),
         }
     }
     pub fn get_precedence(&self) -> u32{
         self.precedence
     }
+    pub fn get_op_type(&self) -> UnOps{
+        self.kind
+    }
+    pub fn get_associativity(&self) -> Associativity{
+        self.associativity
+    }
 }
 
+impl Display for UnOperator{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let name = match self.kind{
+            UnOps::Neg => "-",
+            UnOps::Fac => "!",
+        };
+        write!(f, "{}", name)
+    }
+}
 impl FromStr for UnOperator {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -113,13 +169,13 @@ impl FromStr for UnOperator {
     }
 }
 impl Operator for UnOperator{
-    fn compute(&self, lhs: Val, rhs: Val) -> Result<Val, ValComputeError> {
-       self.compute(lhs, rhs)
-    }
     fn from_str(s: &str) -> Result<Self, String> {
         Self::from_str(s)
     }
     fn get_precedence(&self) -> u32 {
         self.get_precedence()
+    }
+    fn get_associativity(&self) -> Associativity {
+        self.get_associativity()
     }
 }

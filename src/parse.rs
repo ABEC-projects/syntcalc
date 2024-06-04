@@ -1,11 +1,10 @@
-use super::tokens::{Val, BinOperator, UnOperator, Operator Function};
+use super::tokens::{Val, BinOperator, UnOperator, Function};
 use super::tokens::token_builder::Builder;
 use pest::{self, Parser};
 use pest_derive::Parser;
 use std::collections::{VecDeque};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
-use std::ops::Deref;
 
 #[derive(Debug)]
 pub struct ParseError{
@@ -22,16 +21,29 @@ impl Error for ParseError{}
 #[derive(Clone)]
 enum Expr {
     Val(Val),
-    Prefix(BinOperator),
-    Infix(UnOperator),
+    Prefix(UnOperator),
+    Infix(BinOperator),
     Postfixfix(UnOperator),
 }
-enum Tree {
-    Infix(BinOperator, Box<Tree>, Box<Tree>),
-    Prefix(BinOperator, Box<Tree>),
-    Postfixfix(BinOperator, Box<Tree>),
-    Val(Val),
+
+impl Display for Expr{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let str = match self{
+            Expr::Val(val) => format!("Val: {}", val.get_magnetude()), 
+            Expr::Infix(op) => format!("Infix: {}", op),
+            Expr::Prefix(op) => format!("Prefix: {}", op),
+            Expr::Postfixfix(op) => format!("Postfixfix: {}", op),
+        };
+        write!(f, "{}", str)
+    }
 }
+
+impl std::fmt::Debug for Expr{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
 
 #[derive(Default)]
 pub struct SyntCalc{
@@ -40,6 +52,31 @@ pub struct SyntCalc{
 
 /// Main class for synthcalc crate.
 /// Used to parse expressions and evaluate them with eval_str() function.
+#[derive(Debug)]
+enum Op{
+    Un(UnOperator),
+    Bin(BinOperator),
+}
+impl Op{
+    fn get_precedence(&self) -> u32{
+        match self{
+            Op::Un(op) => op.get_precedence(),
+            Op::Bin(op) => op.get_precedence(),
+        }
+    }
+    fn as_expr(&self) -> Expr{
+        use crate::tokens::UnOps;
+        match self{
+            Op::Un(op) => {
+                match op.get_op_type(){
+                    UnOps::Neg => Expr::Prefix(op.clone()),
+                    UnOps::Fac => Expr::Postfixfix(op.clone()),
+                }
+            },
+            Op::Bin(op) => Expr::Infix(op.clone()),
+        }
+    }
+}
 impl SyntCalc {
     pub fn eval_str(&self, expr: &str) -> Result<Val, ParseError>{
         let parsed = match MathParser::parse(Rule::file, expr){
@@ -53,60 +90,145 @@ impl SyntCalc {
         let mut val_op_sequence = Vec::new();
         for pair in parsed {
             match pair.as_rule() {
+                Rule::file => val_op_sequence.push(Expr::Val(self.eval_parsed(pair.into_inner())?)),
                 Rule::number => val_op_sequence.push(
                     Expr::Val(self.token_builder.val_from_str(pair.as_str()).unwrap())),
                 Rule::infix => val_op_sequence.push(
-                    Expr::Infix(UnOperator::from_str(pair.as_str()).unwrap())),
+                    Expr::Infix(BinOperator::from_str(pair.as_str()).unwrap())),
                 Rule::func => val_op_sequence.push(
                     Expr::Val(self.token_builder.function_from_str(pair.as_str()).unwrap().compute(
                             self.get_args_from_func_pair(&pair).unwrap()).unwrap())),
                 Rule::expr => val_op_sequence.push(
                     Expr::Val(self.eval_parsed(pair.into_inner())?)),
+                Rule::add => val_op_sequence.push(Expr::Infix(BinOperator::from_str("+").unwrap())),
+                Rule::mul => val_op_sequence.push(Expr::Infix(BinOperator::from_str("*").unwrap())),
+                Rule::neg => val_op_sequence.push(Expr::Prefix(UnOperator::from_str("-").unwrap())),
+                Rule::fac => val_op_sequence.push(Expr::Postfixfix(UnOperator::from_str("!").unwrap())),
+                Rule::EOI => break,
                 _ => todo!("unimplemented rule: {:?}", pair.as_rule()),
             }
         }
-        let tree = Self::shounting_yard(&val_op_sequence)?;
-        todo!()
+        let val_op_sequence = Self::shounting_yard(&val_op_sequence)?;
+        Ok(Self::compute_expr_vec(&val_op_sequence)?)
     }
 
     /// makes operation tree considering operators' precedence
-    fn shounting_yard(val_op_sequence: &Vec<Expr>) -> Result<Tree, ParseError> {
-        let mut val_op_sequence = VecDeque::from((*val_op_sequence).clone());
+    fn shounting_yard(val_op_sequence: &Vec<Expr>) -> Result<Vec<Expr>, ParseError> {
+        use crate::tokens::Associativity;
+        let val_op_sequence = VecDeque::from((*val_op_sequence).clone());
         let mut reversed_polish: Vec<Expr> = Vec::new();
-        let mut op_stack: Vec<Box<dyn Operator>> = Vec::new();
+        let mut op_stack: Vec<Op> = Vec::new();
+
+        // println!("val_op_sequence: {:#?}", val_op_sequence);
 
         for val_op in val_op_sequence {
             match val_op {
                 Expr::Val(_) => reversed_polish.push(val_op),
                 Expr::Infix(op) => {
-                    if op.get_precedence() > op_stack.last().unwrap().deref().get_precedence() {
-                        reversed_polish.push(op_stack.pop().unwrap());
-                        op_stack.push(Box::new(op));
+                    while op_stack.len() > 0 {
+                        if let Some(last_op) = op_stack.last() {
+                            if op.get_precedence() < last_op.get_precedence() || 
+                                op.get_precedence() == last_op.get_precedence() && op.get_associativity() == Associativity::Left {
+                                reversed_polish.push(op_stack.pop().unwrap().as_expr());
+                            }
+                            else {break;}
+                        }
                     }
+                    op_stack.push(Op::Bin(op));
                 }
-                _ => todo!(),
+                Expr::Prefix(op) => {
+                    while op_stack.len() > 0 {
+                        if let Some(last_op) = op_stack.last() {
+                            if op.get_precedence() < last_op.get_precedence() || 
+                                op.get_precedence() == last_op.get_precedence() && op.get_associativity() == Associativity::Left {
+                                reversed_polish.push(op_stack.pop().unwrap().as_expr());
+                            }
+                            else {break;}
+                        }
+                    }
+                    op_stack.push(Op::Un(op));
+                },
+                Expr::Postfixfix(op) => {
+                    while op_stack.len() > 0 {
+                        if let Some(last_op) = op_stack.last() {
+                            if op.get_precedence() < last_op.get_precedence() || 
+                                op.get_precedence() == last_op.get_precedence() && op.get_associativity() == Associativity::Left {
+                                reversed_polish.push(op_stack.pop().unwrap().as_expr());
+                            }
+                            else {break;}
+                        }
+                    }
+                    op_stack.push(Op::Un(op));
+                }
             }
         }
-        todo!()
+
+        let op_stack = op_stack.iter().map(|op| op.as_expr()).rev();
+        reversed_polish.extend(op_stack);
+
+        // println!("We did it! \n {:#?}", reversed_polish);
+        Ok(reversed_polish)
     }
 
-    fn compute_tree_branch(branch: &Tree) -> Result<Val, ParseError> {
-        match branch {
-            Tree::Val(val) => Ok(val.clone()),
-            Tree::Infix(op, lhs, rhs) => {
-                let l_val = Self::compute_tree_branch(lhs)?;
-                let r_val = Self::compute_tree_branch(rhs)?;
-                todo!()
+    fn compute_expr_vec(val_op_sequence: &Vec<Expr>) -> Result<Val, ParseError> {
+        let mut val_op_sequence = Vec::from((*val_op_sequence).clone());
+
+        let find_last_vals = |val_op_sequence: &[Expr], count: u32| -> Vec<usize> {
+            let mut last_vals = Vec::new();
+            let mut foud = 0;
+            let mut counter = val_op_sequence.len()-1;
+            for val_op in val_op_sequence.iter().rev(){
+                if let Expr::Val(_) = val_op {
+                    last_vals.push(counter);
+                    foud += 1;
+                    if foud == count {break;}
+                }
+                if counter == 0 {break;}
+                counter -= 1;
             }
-            Tree::Prefix(op, rhs) => {
-                let r_val = Self::compute_tree_branch(rhs)?;
-                todo!()
+            println!("Vos: {:?}", val_op_sequence);
+            last_vals
+        };
+        let mut i = 0;
+        while i < val_op_sequence.len() {
+            match val_op_sequence[i] {
+                Expr::Val(_) => {i += 1; continue;},
+                Expr::Infix(op) => {
+                    let operands_positions = find_last_vals(&val_op_sequence[0..i], 2);
+                    let lhs = match val_op_sequence.remove(operands_positions[0]){
+                        Expr::Val(val) => val,
+                        _ => unreachable!(),
+                    };
+                    let rhs = match val_op_sequence.remove(operands_positions[1]){
+                        Expr::Val(val) => val,
+                        _ => unreachable!(),
+                    };                    
+                    i -= 2;
+                    let result = op.compute(lhs, rhs).or_else(|e| Err(ParseError{desc: format!("Error in while processing operators: {}", e)}))?;
+                    val_op_sequence.remove(i);
+                    val_op_sequence.insert(i, Expr::Val(result));
+                },
+                Expr::Prefix(op) | Expr::Postfixfix(op) => {
+                    let operands_positions = find_last_vals(&val_op_sequence[0..i], 1);
+                    let lrhs = match val_op_sequence.remove(operands_positions[0]){
+                        Expr::Val(val) => val,
+                        _ => unreachable!(),
+                    };
+                    i -= 1;
+                    let result = op.compute(lrhs).or_else(|e| Err(ParseError{desc: format!("Error in while processing operators: {}", e)}))?;
+                    val_op_sequence.remove(i);
+                    val_op_sequence.insert(i, Expr::Val(result));
+                },
             }
-            Tree::Postfixfix(op, lhs) => {
-                let l_val = Self::compute_tree_branch(lhs)?;
-                todo!()
-            }
+            i += 1;
+        };
+        if val_op_sequence.len() == 1 {
+            return match &val_op_sequence[0] {
+                Expr::Val(val) => Ok(val.clone()),
+                _ => unreachable!(),
+            };
         }
+        unreachable!()
     }
 
     fn get_args_from_func_pair(&self, pair: &pest::iterators::Pair<Rule>) -> Option<Vec<Val>> {
@@ -128,10 +250,17 @@ impl SyntCalc {
 }
 
 
-
-
-
 #[derive(Parser)]
 #[grammar = "expr_parser.pest"]
 pub struct MathParser{}
 
+#[cfg(test)]
+mod tests{
+    use crate::SyntCalc;
+
+    #[test]
+    fn some_check(){
+        let a = SyntCalc::default().eval_str("-1+2+3*4+5").unwrap().get_magnetude();
+        assert_eq!(a, 18.);
+    }
+}
