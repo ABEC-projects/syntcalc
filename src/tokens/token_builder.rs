@@ -4,9 +4,9 @@ use super::associations::{ValAlias, FnAlias};
 use super::{BinOperator, Brace, Function, UnOperator, Val};
 
 pub struct Builder <'a>{
-    val_opts: &'a ValOpts,
-    val_alias: ValAlias<'a>,
-    func_alias: FnAlias<'a>,
+    pub val_opts: &'a ValOpts,
+    pub val_alias: ValAlias<'a>,
+    pub func_alias: FnAlias<'a>,
 }
 
 

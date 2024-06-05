@@ -1,7 +1,7 @@
 WHITESPACE   =  _{ " " | "\t" | NEWLINE }
 
 name = @{ ASCII_ALPHA ~ (ASCII_ALPHA | ASCII_DIGIT | "_" | "-")* }
-file  =   { SOI ~ expr ~ EOI }
+file  =   { SOI ~ (add_function | add_var | expr) ~ EOI }
     expr     =   { prefix? ~ primary ~ postfix? ~ (infix ~ prefix? ~ primary ~ postfix? )* }
         infix    =  _{ pow | add | sub | mul | div  }
             add    =   { "+" } // Addition
@@ -12,8 +12,8 @@ file  =   { SOI ~ expr ~ EOI }
         prefix   =  _{ neg }
             neg    =   { "-" } // Negation
         postfix  =  _{ fac }
-            fac    =   { "!" } // Factorial
-        primary  =  _{ number | func | "(" ~ expr ~ ")" | var }
+            fac    =   { "!" ~ !"=" } // Factorial
+        primary  =  _{ ternary | number | func | "(" ~ expr ~ ")" | var }
             var     =  @{ name }
             func    =  {name ~ "(" ~ args ~ ")"}
                 args    =  { expr ~ ("," ~ expr)* }
@@ -22,3 +22,14 @@ file  =   { SOI ~ expr ~ EOI }
                 fract  =  @{ ASCII_DIGIT ~ ("_"? ~ ASCII_DIGIT)* }
                 exp    =  @{ ("e" | "E") ~ ("+" | "-")? ~ int }
                 unit   =  @{ (ASCII_ALPHA)+ }
+        ternary  =  { "(" ~ expr ~ cond ~ expr ~ "?" ~ expr ~ ":" ~ expr ~ ")" }
+            cond = _{ notEqual | greaterEqual | lessEqual | greater | less | equal }
+                greater = { ">" }
+                less = { "<" }
+                equal = { "==" }
+                greaterEqual = { ">=" }
+                lessEqual = { "<=" }
+                notEqual = { "!=" }
+    add_function = { name ~ "(" ~ arg_names ~ ")" ~ "=" ~ expr }
+        arg_names = { name ~ ("," ~ name)* }
+    add_var = { name ~ "=" ~ expr }

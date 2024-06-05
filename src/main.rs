@@ -1,6 +1,4 @@
-use pest::Parser;
 use syntcalc as sc;
-use std::io;
 use std::env::args;
 fn main() {
     let opts = sc::parse::ValOpts::default();

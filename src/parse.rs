@@ -87,7 +87,7 @@ impl <'b> SyntCalc <'b> {
     pub fn eval_str(&self, expr: &str) -> Result<Val, ParseError>{
         let parsed = match MathParser::parse(Rule::file, expr){
             Ok(parsed) => parsed,
-            Err(e) => return Err(ParseError{desc: format!("Parse error: {}", e)}),
+            Err(e) => return Err(ParseError{desc: format!("Parse error:\n{}", e)}),
         };
         self.eval_parsed(parsed)
     }
@@ -115,6 +115,29 @@ impl <'b> SyntCalc <'b> {
                 Rule::neg => val_op_sequence.push(Expr::Prefix(UnOperator::from_str("-").unwrap())),
                 Rule::fac => val_op_sequence.push(Expr::Postfixfix(UnOperator::from_str("!").unwrap())),
                 Rule::div => val_op_sequence.push(Expr::Infix(BinOperator::from_str("/").unwrap())),
+                Rule::ternary => {
+                    let mut inner = pair.into_inner();
+                    let lhs = self.eval_parsed(inner.next().unwrap().into_inner())?;
+                    let cond_type = inner.next().unwrap();
+                    let rhs = self.eval_parsed(inner.next().unwrap().into_inner())?;
+                    let if_true = inner.next().unwrap();
+                    let if_false = inner.next().unwrap();
+                    let flag;
+                    match cond_type.as_rule(){
+                        Rule::greater => flag = lhs > rhs,
+                        Rule::less => flag = lhs < rhs,
+                        Rule::equal => flag = lhs == rhs,
+                        Rule::greaterEqual => flag = lhs >= rhs,
+                        Rule::lessEqual => flag = lhs <= rhs,
+                        Rule::notEqual => flag = lhs != rhs,
+                        _ => unreachable!(),
+                    }
+                    if flag{
+                        val_op_sequence.push(Expr::Val(self.eval_parsed(if_true.into_inner())?));
+                    }else{
+                        val_op_sequence.push(Expr::Val(self.eval_parsed(if_false.into_inner())?));
+                    }
+                },
                 Rule::EOI => break,
                 _ => todo!("unimplemented rule: {:?}", pair.as_rule()),
             }

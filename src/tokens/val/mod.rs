@@ -16,7 +16,18 @@ pub struct ValOpts{
     cmp_epsilon: f64,
 }
 
-impl Default for ValOpts{ fn default() -> Self {
+impl ValOpts{
+    pub fn new() -> Self{
+        ValOpts{..Default::default()}
+    }
+    pub fn set_cmp_epsilon(&mut self, cmp_epsilon: f64) -> &Self{
+        self.cmp_epsilon = cmp_epsilon;
+        self
+    }
+}
+
+impl Default for ValOpts{ 
+    fn default() -> Self {
         ValOpts{cmp_epsilon: 0.000001}
     }
 }
@@ -244,10 +255,23 @@ impl ops::DivAssign for Val <'_> {
     }
 }
 
-impl std::cmp::PartialEq for Val <'_> {
+use std::cmp;
+
+impl cmp::PartialEq for Val <'_> {
     fn eq(&self, other: &Self) -> bool {
-        return (self.magn.abs()-other.magn.abs()).abs() < self.options.cmp_epsilon &&
-                self.same_unit(&other);
+        return (
+            self.magn.abs()-other.magn.abs()).abs() < self.options.cmp_epsilon &&
+            self.same_unit(&other
+        );
     }
 }
 
+impl cmp::PartialOrd for Val <'_> {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        if self.same_unit(&other) {
+            return Some(self.magn.partial_cmp(&other.magn).unwrap());
+        }else{
+            return None;
+        }
+    }
+}
