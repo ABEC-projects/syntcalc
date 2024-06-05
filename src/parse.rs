@@ -1,8 +1,10 @@
+pub use crate::tokens::val::ValOpts;
+
 use super::tokens::{Val, BinOperator, UnOperator, Function};
 use super::tokens::token_builder::Builder;
 use pest::{self, Parser};
 use pest_derive::Parser;
-use std::collections::{VecDeque};
+use std::collections::VecDeque;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 
@@ -19,17 +21,17 @@ impl Display for ParseError{
 impl Error for ParseError{}
 
 #[derive(Clone)]
-enum Expr {
-    Val(Val),
+enum Expr <'a> {
+    Val(Val <'a>),
     Prefix(UnOperator),
     Infix(BinOperator),
     Postfixfix(UnOperator),
 }
 
-impl Display for Expr{
+impl Display for Expr <'_>{
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let str = match self{
-            Expr::Val(val) => format!("Val: {}", val.get_magnetude()), 
+            Expr::Val(val) => format!("Val: {}", val), 
             Expr::Infix(op) => format!("Infix: {}", op),
             Expr::Prefix(op) => format!("Prefix: {}", op),
             Expr::Postfixfix(op) => format!("Postfixfix: {}", op),
@@ -38,46 +40,50 @@ impl Display for Expr{
     }
 }
 
-impl std::fmt::Debug for Expr{
+impl std::fmt::Debug for Expr <'_>{
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self)
     }
 }
 
-
-#[derive(Default)]
-pub struct SyntCalc{
-    token_builder: Builder,
-}
-
-/// Main class for synthcalc crate.
-/// Used to parse expressions and evaluate them with eval_str() function.
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 enum Op{
     Un(UnOperator),
     Bin(BinOperator),
 }
-impl Op{
+impl Op {
     fn get_precedence(&self) -> u32{
         match self{
             Op::Un(op) => op.get_precedence(),
             Op::Bin(op) => op.get_precedence(),
         }
     }
-    fn as_expr(&self) -> Expr{
+    fn as_expr(self) -> Expr<'static>{
         use crate::tokens::UnOps;
         match self{
             Op::Un(op) => {
                 match op.get_op_type(){
-                    UnOps::Neg => Expr::Prefix(op.clone()),
-                    UnOps::Fac => Expr::Postfixfix(op.clone()),
+                    UnOps::Neg => Expr::Prefix(op),
+                    UnOps::Fac => Expr::Postfixfix(op),
                 }
             },
-            Op::Bin(op) => Expr::Infix(op.clone()),
+            Op::Bin(op) => Expr::Infix(op),
         }
     }
 }
-impl SyntCalc {
+
+pub struct SyntCalc <'a>{
+    token_builder: Builder<'a>,
+}
+
+/// Main class for synthcalc crate.
+/// Used to parse expressions and evaluate them with eval_str() function.
+impl <'b> SyntCalc <'b> {
+    pub fn new <'a: 'b> (val_opts: &'a ValOpts) -> Self{
+        Self{
+            token_builder: Builder::new(val_opts),
+        }
+    }
     pub fn eval_str(&self, expr: &str) -> Result<Val, ParseError>{
         let parsed = match MathParser::parse(Rule::file, expr){
             Ok(parsed) => parsed,
@@ -118,7 +124,7 @@ impl SyntCalc {
     }
 
     /// makes operation tree considering operators' precedence
-    fn shounting_yard(val_op_sequence: &Vec<Expr>) -> Result<Vec<Expr>, ParseError> {
+    fn shounting_yard <'a>(val_op_sequence: &Vec<Expr<'a>>) -> Result<Vec<Expr<'a>>, ParseError> {
         use crate::tokens::Associativity;
         let val_op_sequence = VecDeque::from((*val_op_sequence).clone());
         let mut reversed_polish: Vec<Expr> = Vec::new();
@@ -163,7 +169,7 @@ impl SyntCalc {
         Ok(reversed_polish)
     }
 
-    fn compute_expr_vec(val_op_sequence: &Vec<Expr>) -> Result<Val, ParseError> {
+    fn compute_expr_vec <'a>(val_op_sequence: &Vec<Expr<'a>>) -> Result<Val <'a>, ParseError> {
         let mut val_op_sequence = Vec::from((*val_op_sequence).clone());
 
         let find_last_vals = |val_op_sequence: &[Expr], count: u32| -> Vec<usize> {
@@ -254,14 +260,16 @@ pub struct MathParser{}
 
 #[cfg(test)]
 mod tests{
-    use crate::SyntCalc;
+    use super::SyntCalc;
+    use super::ValOpts;
 
     #[test]
     fn some_check(){
-        let a = SyntCalc::default().eval_str(
+        let opts = ValOpts::default();
+        let a = SyntCalc::new(&opts).eval_str(
             "-1+sin(arcsin(0))+sin(pi)+3*4+5"
             ).unwrap().get_magnetude();
-        let b = SyntCalc::default().eval_str(
+        let b = SyntCalc::new(&opts).eval_str(
             "2km*3"
         ).unwrap().get_magnetude();
         assert_eq!(a, 16.);

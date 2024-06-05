@@ -4,8 +4,6 @@ pub mod associations;
 
 mod operators;
 
-use std::str::FromStr;
-
 use val::ValComputeError;
 pub use val::Val as Val;
 pub use operators::*;
@@ -14,19 +12,19 @@ pub use operators::*;
 
 #[derive(Clone, Copy)]
 pub struct Function{
-    lambda: fn(Vec<Val>) -> Val,
+    lambda: for <'a> fn(Vec<Val<'a>>) -> Result<Val<'a>, ValComputeError>,
     argc: u32,
 }
 use self::associations::FnAlias;
 impl Function{
-    pub fn new(lambda: fn(Vec<Val>) -> Val,  argc: u32) -> Self{
+    pub fn new (lambda: for <'a> fn(Vec<Val<'a>>) -> Result<Val<'a>, ValComputeError>,  argc: u32) -> Self{
         Function{lambda, argc}
     }
-    pub fn compute (&self,args: Vec<Val>) -> Result<Val, &'static str> {
+    pub fn compute <'a> (&self, args: Vec<Val<'a>>) -> Result<Val<'a>, String> {
         if args.len() ==  self.argc as usize{
-            return Ok((self.lambda)(args));
+            return (self.lambda)(args).map_err(|x| x.to_string());
         }else{
-            return Err("Argument number do not match");
+            return Err("Argument number do not match".to_string());
         }
     }
     pub fn from_str(s: &str, al: &FnAlias) -> Result<Self, String>{

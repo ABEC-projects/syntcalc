@@ -17,50 +17,53 @@ pub struct ValOpts{
 }
 
 impl Default for ValOpts{ fn default() -> Self {
-        ValOpts{cmp_epsilon: 0.0000001}
+        ValOpts{cmp_epsilon: 0.000001}
     }
 }
 
 /// Struct that represents a mathematical value with unit
 #[derive(Clone, Debug)]
-pub struct Val{
+pub struct Val <'a>{
     unit: Unit,
     magn: f64,
-    options: ValOpts,
+    options: &'a ValOpts,
 }
 
-impl Val{
-    pub fn new(magn:f64, unit: Unit) -> Self{
-        Val{magn, unit, options: ValOpts::default()}
+impl <'b> Val <'b>{
+    pub fn new <'a: 'b> (magn:f64, unit: Unit, options: &'a ValOpts) -> Self{
+        Val{magn, unit, options}
     }
 
-    pub fn set_options(&mut self, options: ValOpts) -> &Self{
-        self.options = options;
-        self
+    pub fn get_opts(&self) -> &ValOpts{
+        self.options
+    }
+
+    pub fn set_magnetude(&mut self, magn: f64){
+        self.magn = magn;
     }
 
     pub fn pow(&self, p:f64) -> Self{
-        let mut ret = Self::new(1., D);
-        ret.unit = self.unit.pow(p);
+        let mut ret = self.clone();
+        ret.unit = ret.unit.pow(p);
         ret.magn = ret.magn.powf(p);
         ret
     }
 
     pub fn pow_val(&self, p: &Val) -> Result<Self, ValComputeError>{
-        let mut ret = Self::new(1., D);
+        let mut ret = self.clone();
         if !p.get_unit().same_unit( &base_units::D, self.options.cmp_epsilon){
             return Err(ValComputeError::new(
-                    "Incompatible units".to_string(),
+                    "Can not rise to a power with a unit".to_string(),
                     ValComputeErrorType::IncompatibleUnits));
         }
         let p = p.magn;
-        ret.unit = self.unit.pow(p);
+        ret.unit = ret.unit.pow(p);
         ret.magn = ret.magn.powf(p);
         Ok(ret)
     }
 
     pub fn factorial(&self) -> Self{
-        let mut ret = Self::new(1., D);
+        let mut ret = self.clone();
         todo!();
         ret
     }
@@ -77,7 +80,7 @@ impl Val{
     pub fn get_magnetude(&self) -> f64{
         self.magn
     }
-    pub fn from_str(s: &str, al: &ValAlias) -> Result<Self, String> {
+    pub fn from_str <'a: 'b> (s: &str, al: &'a ValAlias, options: &'a ValOpts) -> Result<Self, String> {
         use regex::Regex;
         let reg = 
             r"^(?<val>(?<neg>-)?(?<base>0[xbo])?(?<int>\d+)(\.(?<fract>\d+))?([Ee](?<exp>-?\d+))?)?(?<unit>\w+)?";
@@ -134,40 +137,33 @@ impl Val{
                 ((base as f64).powi(fract_part_len));
             magn *= (base as f64).powi(exponent_part);
 
-            let mut ret = Val::new(magn, D);
+            let mut ret = Val::new(magn, D, options);
             ret *= match caps.name("unit"){
                 Some(s) => {match al.get_val(s.as_str()){
                     Some(v) => v,
                     None => return Err(format!("No {} found", s.as_str())),
                 }},
-                None => Val::new(1., D),
+                None => Self::new(1., D, options),
             };
             return Ok(ret);
         }else{
-            return Err("No value found in the string".to_string());
+            return Err("No number found in the string".to_string());
         }
     }
 }
 
-impl Display for Val{
+impl Display for Val <'_>{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "todo:{}{:?}", self.magn, self.unit)
     }
 }
-
-impl Default for Val{
-    fn default() -> Self {
-        Val { unit: (D), magn: (1.), options: (ValOpts::default())}
-    }
-}
-
 
 use std::fmt::Display;
 use std::{ops, str::FromStr};
 
 use super::associations::ValAlias;
 
-impl ops::Add for Val{
+impl ops::Add for Val<'_>{
     type Output = Result<Self, ValComputeError>;
     fn add(self, rhs: Self) -> Self::Output {
         let mut ret = self.clone();
@@ -185,7 +181,7 @@ impl ops::Add for Val{
     }
 }
 
-impl ops::Sub for Val{
+impl ops::Sub for Val<'_>{
     type Output = Result<Self, ValComputeError>;
     fn sub(self, rhs: Self) -> Self::Output {
         let mut ret = self.clone();
@@ -203,7 +199,7 @@ impl ops::Sub for Val{
     }
 }
 
-impl ops::Neg for Val{
+impl ops::Neg for Val<'_>{
     type Output = Self;
     fn neg(self) -> Self::Output {
         let mut ret = self.clone();
@@ -212,7 +208,7 @@ impl ops::Neg for Val{
     }
 }
 
-impl ops::Mul for Val {
+impl ops::Mul for Val<'_> {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self::Output {
         let mut ret = self.clone();
@@ -223,14 +219,14 @@ impl ops::Mul for Val {
     }
 }
 
-impl ops::MulAssign for Val {
+impl ops::MulAssign for Val <'_> {
     fn mul_assign(&mut self, rhs: Self) {
         self.magn *= rhs.magn;
         self.unit *= rhs.unit;
     }
 }
 
-impl ops::Div for Val {
+impl ops::Div for Val <'_> {
     type Output = Self;
     fn div(self, rhs: Self) -> Self::Output {
         let mut ret = self.clone();
@@ -241,14 +237,14 @@ impl ops::Div for Val {
     }
 }
 
-impl ops::DivAssign for Val {
+impl ops::DivAssign for Val <'_> {
     fn div_assign(&mut self, rhs: Self) {
         self.magn /= rhs.magn;
         self.unit /= rhs.unit;
     }
 }
 
-impl std::cmp::PartialEq for Val{
+impl std::cmp::PartialEq for Val <'_> {
     fn eq(&self, other: &Self) -> bool {
         return (self.magn.abs()-other.magn.abs()).abs() < self.options.cmp_epsilon &&
                 self.same_unit(&other);
