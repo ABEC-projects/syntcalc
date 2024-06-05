@@ -1,3 +1,4 @@
+use crate::tokens::val::{self, ValComputeError, ValComputeErrorType};
 pub use crate::tokens::val::ValOpts;
 
 use super::tokens::{Val, BinOperator, UnOperator, Function};
@@ -74,8 +75,9 @@ impl Op {
     }
 }
 
+#[derive(Clone)]
 pub struct SyntCalc {
-    token_builder: Builder,
+    pub token_builder: Builder,
 }
 
 /// Main class for synthcalc crate.
@@ -86,7 +88,7 @@ impl  SyntCalc  {
             token_builder: Builder::new(Arc::new(RefCell::new(ValOpts::default()))), //ValOpts::default()),
         }
     }
-    pub fn eval_str(&self, expr: &str) -> Result<Val, ParseError>{
+    pub fn eval_str(&mut self, expr: &str) -> Result<Val, ParseError>{
         let parsed = match MathParser::parse(Rule::file, expr){
             Ok(parsed) => parsed,
             Err(e) => return Err(ParseError{desc: format!("Parse error:\n{}", e)}),
@@ -94,29 +96,36 @@ impl  SyntCalc  {
         self.eval_parsed(parsed)
     }
 
-    fn eval_parsed(&self, parsed: pest::iterators::Pairs<Rule>) -> Result<Val, ParseError> {
+    fn eval_parsed(&mut self, parsed: pest::iterators::Pairs<Rule>) -> Result<Val, ParseError> {
         let mut val_op_sequence = Vec::new();
-        // println!("parsed: {:#?}", parsed);
         for pair in parsed {
             // println!("pair: {}", pair);
             // println!("val_op_sequence: {:#?}\n", val_op_sequence);
             match pair.as_rule() {
-                Rule::file => val_op_sequence.push(Expr::Val(self.eval_parsed(pair.into_inner())?)),
+                Rule::file => val_op_sequence.push(
+                    Expr::Val(self.eval_parsed(pair.into_inner())?)),
                 Rule::number => val_op_sequence.push(
                     Expr::Val(self.token_builder.val_from_str(pair.as_str()).unwrap())),
                 Rule::infix => val_op_sequence.push(
                     Expr::Infix(BinOperator::from_str(pair.as_str()).unwrap())),
                 Rule::func => val_op_sequence.push(
-                    Expr::Val(self.token_builder.function_from_str(pair.clone().into_inner().next().unwrap().as_str()).unwrap().compute(
+                    Expr::Val(self.token_builder.function_from_str(
+                            pair.clone().into_inner().next().unwrap().as_str()).unwrap().compute(
                             self.get_args_from_func_pair(&pair).unwrap()).unwrap())),
                 Rule::expr => val_op_sequence.push(
                     Expr::Val(self.eval_parsed(pair.into_inner())?)),
-                Rule::var => val_op_sequence.push(Expr::Val(self.token_builder.get_var_val(pair.as_str()).unwrap())),
+                Rule::var => val_op_sequence.push(
+                    Expr::Val(match self.token_builder.get_var_val(pair.as_str()){
+                        Ok(val) => val,
+                        Err(e) => return Err(ParseError{desc: format!("Error in while processing variables: {}", e)}),
+                    })),
                 Rule::add => val_op_sequence.push(Expr::Infix(BinOperator::from_str("+").unwrap())),
+                Rule::sub => val_op_sequence.push(Expr::Infix(BinOperator::from_str("-").unwrap())),
                 Rule::mul => val_op_sequence.push(Expr::Infix(BinOperator::from_str("*").unwrap())),
                 Rule::neg => val_op_sequence.push(Expr::Prefix(UnOperator::from_str("-").unwrap())),
                 Rule::fac => val_op_sequence.push(Expr::Postfixfix(UnOperator::from_str("!").unwrap())),
                 Rule::div => val_op_sequence.push(Expr::Infix(BinOperator::from_str("/").unwrap())),
+                Rule::pow => val_op_sequence.push(Expr::Infix(BinOperator::from_str("^").unwrap())),
                 Rule::ternary => {
                     let mut inner = pair.into_inner();
                     let lhs = self.eval_parsed(inner.next().unwrap().into_inner())?;
@@ -140,14 +149,83 @@ impl  SyntCalc  {
                         val_op_sequence.push(Expr::Val(self.eval_parsed(if_false.into_inner())?));
                     }
                 },
+                Rule::add_var => {
+                    let mut inner = pair.into_inner();
+                    let name = inner.next().unwrap().as_str().to_string();
+                    let val = self.eval_parsed(inner.next().unwrap().into_inner())?;
+                    self.token_builder.val_alias.add_alias(name, val.clone());
+                },
+                Rule::add_function => {
+                    let inner = pair.into_inner();
+                    let mut names = Vec::new();
+                    let mut body = None;
+                    for pair in inner {
+                        match pair.as_rule() {
+                            Rule::name => {
+                                names.push(pair);
+                            },
+                            Rule::expr => {
+                                body = Some(pair);
+                            },
+                            _ => unreachable!(),
+                        }
+                    }
+
+                    let body = body.unwrap().as_str().to_string();
+                    let fn_name = names[0].as_str().to_string();
+                    let argc = names.len() - 1;
+                    let sc = self.clone();
+
+                    let names: Vec<String> = names.iter().skip(1).map(
+                        |name| name.as_str().to_string()).collect();
+
+                    let lambda = move |vals: Vec<Val>|{
+                        let arg_names = names.clone();
+                        let body = body.clone();
+                        let mut sc = sc.clone();
+                        for i in 0..arg_names.len() {
+                            sc.token_builder.val_alias.add_alias(arg_names[i].clone(), vals[i].clone())
+                        }
+                        return sc.eval_str(&body).map_err(|e| ValComputeError::new(e.desc, ValComputeErrorType::Other));
+                    };
+
+                    let func = Function::new(std::sync::Arc::new(lambda), argc as u32);
+
+                    self.token_builder.func_alias.add_alias(fn_name, func);
+                },
                 Rule::EOI => break,
                 _ => todo!("unimplemented rule: {:?}", pair.as_rule()),
             }
+        }
+        if val_op_sequence.is_empty() {
+            return Err(ParseError{desc: "".to_string()});
         }
         let val_op_sequence = Self::shounting_yard(&val_op_sequence)?;
         Ok(Self::compute_expr_vec(&val_op_sequence)?)
     }
 
+    fn get_args_from_func_pair(&mut self, pair: &pest::iterators::Pair<Rule>) -> Option<Vec<Val>> {
+        match pair.as_rule() {
+            Rule::func => {
+                let mut args = Vec::new();
+                for arg in pair.clone().into_inner() {
+                    match arg.as_rule() {
+                        Rule::args =>{
+                            let arg_val = self.eval_parsed(arg.into_inner());
+                            match arg_val {
+                                Ok(val) => args.push(val),
+                                Err(_) => return None,
+                            }
+                        }
+                        Rule::name => (), 
+                        _ => unreachable!(),
+                    }
+                }
+                return Some(args);
+            },
+            _ => return None,
+        }
+    }
     /// makes operation tree considering operators' precedence
     fn shounting_yard (val_op_sequence: &Vec<Expr>) -> Result<Vec<Expr>, ParseError> {
         use crate::tokens::Associativity;
@@ -165,7 +243,7 @@ impl  SyntCalc  {
                         if let Some(last_op) = op_stack.last() {
                             if op.get_precedence() < last_op.get_precedence() || 
                                 op.get_precedence() == last_op.get_precedence() && op.get_associativity() == Associativity::Left {
-                                reversed_polish.push(op_stack.pop().unwrap().as_expr());
+                                    reversed_polish.push(op_stack.pop().unwrap().as_expr());
                             }
                             else {break;}
                         }
@@ -177,7 +255,7 @@ impl  SyntCalc  {
                         if let Some(last_op) = op_stack.last() {
                             if op.get_precedence() < last_op.get_precedence() || 
                                 op.get_precedence() == last_op.get_precedence() && op.get_associativity() == Associativity::Left {
-                                reversed_polish.push(op_stack.pop().unwrap().as_expr());
+                                    reversed_polish.push(op_stack.pop().unwrap().as_expr());
                             }
                             else {break;}
                         }
@@ -218,11 +296,11 @@ impl  SyntCalc  {
                 Expr::Val(_) => {i += 1; continue;},
                 Expr::Infix(op) => {
                     let operands_positions = find_last_vals(&val_op_sequence[0..i], 2);
-                    let lhs = match val_op_sequence.remove(operands_positions[0]){
+                    let rhs = match val_op_sequence.remove(operands_positions[0]){
                         Expr::Val(val) => val,
                         _ => unreachable!(),
                     };
-                    let rhs = match val_op_sequence.remove(operands_positions[1]){
+                    let lhs = match val_op_sequence.remove(operands_positions[1]){
                         Expr::Val(val) => val,
                         _ => unreachable!(),
                     };                    
@@ -254,28 +332,6 @@ impl  SyntCalc  {
         unreachable!()
     }
 
-    fn get_args_from_func_pair(&self, pair: &pest::iterators::Pair<Rule>) -> Option<Vec<Val>> {
-        match pair.as_rule() {
-            Rule::func => {
-                let mut args = Vec::new();
-                for arg in pair.clone().into_inner() {
-                    match arg.as_rule() {
-                        Rule::args =>{
-                            let arg_val = self.eval_parsed(arg.into_inner());
-                            match arg_val {
-                                Ok(val) => args.push(val),
-                                Err(_) => return None,
-                            }
-                        }
-                        Rule::name => (), 
-                        _ => unreachable!(),
-                    }
-                }
-                return Some(args);
-            },
-            _ => return None,
-        }
-    }
 }
 
 
@@ -295,7 +351,7 @@ mod tests{
     fn some_check(){
         let a = SyntCalc::new().eval_str(
             "-1+sin(arcsin(0))+sin(pi)+3*4+5"
-            ).unwrap().get_magnetude();
+        ).unwrap().get_magnetude();
         let b = SyntCalc::new().eval_str(
             "2km*3"
         ).unwrap().get_magnetude();

@@ -1,14 +1,19 @@
 use syntcalc as sc;
-use std::{cell::RefCell, env::args, sync::Arc};
+use std::io;
 fn main() {
-    let parser = sc::SyntCalc::new();
+    let mut parser = sc::SyntCalc::new();
+    parser.token_builder.insert_defaults();
     let mut string = String::new();
-    for i in args().skip(1) {
-        string = format!("{} {}", string, i);
-    }
-    let result = parser.eval_str(&string);
-    match result{
-        Ok(v) => println!("{}", v.get_magnetude()),
-        Err(e) => println!("{}", e),
+    loop {
+        io::stdin()
+            .read_line(&mut string)
+            .expect("Failed to read line");
+        if string.trim() == "exit()" {break;}
+
+        match parser.eval_str(&string) {
+            Ok(val) => println!("{}", val),
+            Err(e) => println!("{}", e),
+        }
+        string.clear();
     }
 }

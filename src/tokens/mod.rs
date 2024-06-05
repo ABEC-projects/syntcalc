@@ -4,20 +4,25 @@ pub mod associations;
 
 mod operators;
 
+use std::sync::Arc;
+
 use val::ValComputeError;
 pub use val::Val as Val;
 pub use operators::*;
 
 
+trait FnLabmda: Fn(Vec<Val>) -> Result<Val, ValComputeError>{}
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct Function{
-    lambda: for <'a> fn(Vec<Val>) -> Result<Val, ValComputeError>,
+    lambda: Arc<dyn Fn(Vec<Val>) -> Result<Val, ValComputeError>>,
     argc: u32,
 }
+
+
 use self::associations::FnAlias;
 impl Function{
-    pub fn new (lambda: for <'a> fn(Vec<Val>) -> Result<Val, ValComputeError>,  argc: u32) -> Self{
+    pub fn new (lambda: Arc<dyn Fn(Vec<Val>) -> Result<Val, ValComputeError>>,  argc: u32) -> Self{
         Function{lambda, argc}
     }
     pub fn compute <'a> (&self, args: Vec<Val>) -> Result<Val, String> {

@@ -5,6 +5,7 @@ use super::{Function, Val};
 use super::val::{base_units::*, ValComputeError, ValComputeErrorType, ValOpts};
 
 
+#[derive(Clone)]
 pub struct ValAlias{
     map: HashMap<String, Val>,
     valopts: Arc<RefCell<ValOpts>>, 
@@ -45,6 +46,7 @@ impl ValAlias {
 }
 
 type FnMap = HashMap<String, Function>;
+#[derive(Clone)]
 pub struct FnAlias {
     map: FnMap,
     valopts: Arc<RefCell<ValOpts>>,
@@ -56,8 +58,9 @@ impl  FnAlias {
         Self { map: FnMap::new(), valopts}
     }
     pub fn insert_default(&mut self) -> &Self{
-        self.map.insert( "ln".to_string(), Function { lambda:
-            |x|{
+        use std::sync::Arc;
+        self.map.insert( "ln".to_string(), Function { lambda: Arc::new(
+            |x: Vec<Val>|{
                 if x[0].get_magnetude() < 0.{
                     return Err(ValComputeError::new(
                             "Can not take the logarithm of a negative number".to_string(),
@@ -66,23 +69,25 @@ impl  FnAlias {
                 let mut ret = x[0].clone();
                 ret.set_magnetude(ret.get_magnetude().ln());
                 Ok(ret)
-            },
+            }),
             argc: 1});
         
         self.map.insert("sin".to_string(), Function {
-            lambda: |x| {
+            lambda: 
+            Arc::new( |x| {
                 let mut ret = x[0].clone();
                 ret.set_magnetude(ret.get_magnetude().sin());
                 Ok(ret)
-            },
+            }),
             argc: 1
         });
         self.map.insert("cos".to_string(), Function {
-            lambda: |x| {
+            lambda: 
+            Arc::new(|x| {
                 let mut ret = x[0].clone();
                 ret.set_magnetude(ret.get_magnetude().cos());
                 Ok(ret)
-            },
+            }),
             argc: 1
         });
 

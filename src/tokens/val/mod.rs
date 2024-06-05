@@ -165,7 +165,7 @@ impl Val {
 
 impl Display for Val {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "todo:{}{:?}", self.magn, self.unit)
+        write!(f, "{}", self.magn)
     }
 }
 
@@ -201,7 +201,7 @@ impl ops::Sub for Val{
         let mut ret = self.clone();
 
         if self.unit == rhs.unit {
-            ret.magn += rhs.magn;
+            ret.magn -= rhs.magn;
         }else{
             return Err(ValComputeError::new(
                 "Units should be the same for addition".to_string(),

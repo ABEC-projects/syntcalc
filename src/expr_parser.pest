@@ -1,6 +1,6 @@
 WHITESPACE   =  _{ " " | "\t" | NEWLINE }
 
-name = @{ ASCII_ALPHA ~ (ASCII_ALPHA | ASCII_DIGIT | "_" | "-")* }
+name = @{ ASCII_ALPHA ~ (ASCII_ALPHA | ASCII_DIGIT | "_")* }
 file  =   { SOI ~ (add_function | add_var | expr) ~ EOI }
     expr     =   { prefix? ~ primary ~ postfix? ~ (infix ~ prefix? ~ primary ~ postfix? )* }
         infix    =  _{ pow | add | sub | mul | div  }
@@ -31,5 +31,5 @@ file  =   { SOI ~ (add_function | add_var | expr) ~ EOI }
                 lessEqual = { "<=" }
                 notEqual = { "!=" }
     add_function = { name ~ "(" ~ arg_names ~ ")" ~ "=" ~ expr }
-        arg_names = { name ~ ("," ~ name)* }
+        arg_names = _{ (name ~ ("," ~ name)*) | "" }
     add_var = { name ~ "=" ~ expr }

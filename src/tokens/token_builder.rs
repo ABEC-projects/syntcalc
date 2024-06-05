@@ -7,6 +7,7 @@ use super::val::{ValOpts, base_units::*};
 use super::associations::{ValAlias, FnAlias};
 use super::{BinOperator, Brace, Function, UnOperator, Val};
 
+#[derive(Clone)]
 pub struct Builder {
     pub val_opts: Arc<RefCell<ValOpts>>,
     pub val_alias: ValAlias,
