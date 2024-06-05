@@ -4,9 +4,11 @@ use super::tokens::{Val, BinOperator, UnOperator, Function};
 use super::tokens::token_builder::Builder;
 use pest::{self, Parser};
 use pest_derive::Parser;
+use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct ParseError{
@@ -21,14 +23,14 @@ impl Display for ParseError{
 impl Error for ParseError{}
 
 #[derive(Clone)]
-enum Expr <'a> {
-    Val(Val <'a>),
+enum Expr  {
+    Val(Val ),
     Prefix(UnOperator),
     Infix(BinOperator),
     Postfixfix(UnOperator),
 }
 
-impl Display for Expr <'_>{
+impl Display for Expr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let str = match self{
             Expr::Val(val) => format!("Val: {}", val), 
@@ -40,7 +42,7 @@ impl Display for Expr <'_>{
     }
 }
 
-impl std::fmt::Debug for Expr <'_>{
+impl std::fmt::Debug for Expr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self)
     }
@@ -58,7 +60,7 @@ impl Op {
             Op::Bin(op) => op.get_precedence(),
         }
     }
-    fn as_expr(self) -> Expr<'static>{
+    fn as_expr(self) -> Expr{
         use crate::tokens::UnOps;
         match self{
             Op::Un(op) => {
@@ -72,16 +74,16 @@ impl Op {
     }
 }
 
-pub struct SyntCalc <'a>{
-    token_builder: Builder<'a>,
+pub struct SyntCalc {
+    token_builder: Builder,
 }
 
 /// Main class for synthcalc crate.
 /// Used to parse expressions and evaluate them with eval_str() function.
-impl <'b> SyntCalc <'b> {
-    pub fn new <'a: 'b> (val_opts: &'a ValOpts) -> Self{
+impl  SyntCalc  {
+    pub fn new () -> Self{
         Self{
-            token_builder: Builder::new(val_opts),
+            token_builder: Builder::new(Arc::new(RefCell::new(ValOpts::default()))), //ValOpts::default()),
         }
     }
     pub fn eval_str(&self, expr: &str) -> Result<Val, ParseError>{
@@ -147,7 +149,7 @@ impl <'b> SyntCalc <'b> {
     }
 
     /// makes operation tree considering operators' precedence
-    fn shounting_yard <'a>(val_op_sequence: &Vec<Expr<'a>>) -> Result<Vec<Expr<'a>>, ParseError> {
+    fn shounting_yard (val_op_sequence: &Vec<Expr>) -> Result<Vec<Expr>, ParseError> {
         use crate::tokens::Associativity;
         let val_op_sequence = VecDeque::from((*val_op_sequence).clone());
         let mut reversed_polish: Vec<Expr> = Vec::new();
@@ -192,7 +194,7 @@ impl <'b> SyntCalc <'b> {
         Ok(reversed_polish)
     }
 
-    fn compute_expr_vec <'a>(val_op_sequence: &Vec<Expr<'a>>) -> Result<Val <'a>, ParseError> {
+    fn compute_expr_vec (val_op_sequence: &Vec<Expr>) -> Result<Val , ParseError> {
         let mut val_op_sequence = Vec::from((*val_op_sequence).clone());
 
         let find_last_vals = |val_op_sequence: &[Expr], count: u32| -> Vec<usize> {
@@ -283,16 +285,18 @@ pub struct MathParser{}
 
 #[cfg(test)]
 mod tests{
+    use std::cell::RefCell;
+    use std::sync::Arc;
+
     use super::SyntCalc;
     use super::ValOpts;
 
     #[test]
     fn some_check(){
-        let opts = ValOpts::default();
-        let a = SyntCalc::new(&opts).eval_str(
+        let a = SyntCalc::new().eval_str(
             "-1+sin(arcsin(0))+sin(pi)+3*4+5"
             ).unwrap().get_magnetude();
-        let b = SyntCalc::new(&opts).eval_str(
+        let b = SyntCalc::new().eval_str(
             "2km*3"
         ).unwrap().get_magnetude();
         assert_eq!(a, 16.);

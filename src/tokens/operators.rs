@@ -37,7 +37,7 @@ impl BinOperator {
     fn new(op: BinOps, precedence: u32, associativity: Associativity) -> Self{
         BinOperator { kind: op, precedence, associativity }
     }
-    pub fn compute <'a> (&self, lhs: Val<'a>, rhs: Val<'a>) -> Result<Val<'a>, ValComputeError> {
+    pub fn compute <'a> (&self, lhs: Val, rhs: Val) -> Result<Val, ValComputeError> {
         use BinOps::*;
         match self.kind {
             Add => lhs + rhs,
@@ -135,7 +135,7 @@ impl UnOperator{
             None => Err(format!("No such operator: '{s}'")),
         }
     }
-    pub fn compute <'a> (&self, val: Val <'a> ) -> Result<Val <'a>, ValComputeError> {
+    pub fn compute  (&self, val: Val  ) -> Result<Val , ValComputeError> {
         use UnOps::*;
         match self.kind {
             Neg => Ok(-val),

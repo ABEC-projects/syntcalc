@@ -12,15 +12,15 @@ pub use operators::*;
 
 #[derive(Clone, Copy)]
 pub struct Function{
-    lambda: for <'a> fn(Vec<Val<'a>>) -> Result<Val<'a>, ValComputeError>,
+    lambda: for <'a> fn(Vec<Val>) -> Result<Val, ValComputeError>,
     argc: u32,
 }
 use self::associations::FnAlias;
 impl Function{
-    pub fn new (lambda: for <'a> fn(Vec<Val<'a>>) -> Result<Val<'a>, ValComputeError>,  argc: u32) -> Self{
+    pub fn new (lambda: for <'a> fn(Vec<Val>) -> Result<Val, ValComputeError>,  argc: u32) -> Self{
         Function{lambda, argc}
     }
-    pub fn compute <'a> (&self, args: Vec<Val<'a>>) -> Result<Val<'a>, String> {
+    pub fn compute <'a> (&self, args: Vec<Val>) -> Result<Val, String> {
         if args.len() ==  self.argc as usize{
             return (self.lambda)(args).map_err(|x| x.to_string());
         }else{

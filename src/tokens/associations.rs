@@ -1,28 +1,30 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::sync::Arc;
 use super::{Function, Val};
 use super::val::{base_units::*, ValComputeError, ValComputeErrorType, ValOpts};
 
 
-pub struct ValAlias <'a>{
-    map: HashMap<String, Val<'a>>,
-    valopts: &'a ValOpts,
+pub struct ValAlias{
+    map: HashMap<String, Val>,
+    valopts: Arc<RefCell<ValOpts>>, 
 }
 
-impl <'b> ValAlias <'b> {
-    pub fn new <'a: 'b>(valopts: &'a ValOpts) -> Self{
-        let map: HashMap<String, Val<'a>> = HashMap::new();
+impl ValAlias {
+    pub fn new (valopts: Arc<RefCell<ValOpts>>) -> Self{
+        let map: HashMap<String, Val> = HashMap::new();
         ValAlias{map, valopts}
     }
-    pub fn insert_default <'a>(&mut self) -> &Self{
-        self.map.insert(String::from("km"), Val::new(1000., M, self.valopts));
-        self.map.insert(String::from("g"), Val::new(0.001, KG, self.valopts));
-        self.map.insert(String::from("kg"), Val::new(1., KG, self.valopts));
-        self.map.insert(String::from("min"), Val::new(60., S, self.valopts));
-        self.map.insert(String::from("ms"), Val::new(0.001, S, self.valopts));
-        self.map.insert(String::from("s"), Val::new(1., S, self.valopts));
-        self.map.insert(String::from("J"), Val::new(1., KG*M.pow(2.)/S.pow(2.), self.valopts));
-        self.map.insert(String::from("W"), Val::new(1., KG*M.pow(2.)/S.pow(3.), self.valopts));
-        self.map.insert(String::from("pi"), Val::new(3.141592653589793238462643383279502, D, self.valopts));
+    pub fn insert_default (&mut self) -> &Self{
+        self.map.insert(String::from("km"), Val::new(1000., M, self.valopts.clone()));
+        self.map.insert(String::from("g"), Val::new(0.001, KG, self.valopts.clone()));
+        self.map.insert(String::from("kg"), Val::new(1., KG, self.valopts.clone()));
+        self.map.insert(String::from("min"), Val::new(60., S, self.valopts.clone()));
+        self.map.insert(String::from("ms"), Val::new(0.001, S, self.valopts.clone()));
+        self.map.insert(String::from("s"), Val::new(1., S, self.valopts.clone()));
+        self.map.insert(String::from("J"), Val::new(1., KG*M.pow(2.)/S.pow(2.), self.valopts.clone()));
+        self.map.insert(String::from("W"), Val::new(1., KG*M.pow(2.)/S.pow(3.), self.valopts.clone()));
+        self.map.insert(String::from("pi"), Val::new(3.141592653589793238462643383279502, D, self.valopts.clone()));
 
         self
     }
@@ -30,28 +32,28 @@ impl <'b> ValAlias <'b> {
         self.map.get(key).cloned()
 
     }
-    pub fn get_map (&self) -> &HashMap<String, Val<'b>>{
+    pub fn get_map (&self) -> &HashMap<String, Val>{
         &self.map
     }
-    pub fn set_map <'a: 'b> (&mut self, map: HashMap<String, Val<'a>>) -> &Self{
+    pub fn set_map  (&mut self, map: HashMap<String, Val>) -> &Self{
         self.map = map;
         self
     }
-    pub fn add_alias <'a: 'b>(&mut self, key: String, value: Val<'a>){
+    pub fn add_alias (&mut self, key: String, value: Val){
         self.map.insert(key, value);
     }
 }
 
 type FnMap = HashMap<String, Function>;
-pub struct FnAlias <'a>{
+pub struct FnAlias {
     map: FnMap,
-    valopts: &'a ValOpts,
+    valopts: Arc<RefCell<ValOpts>>,
 }
 
 
-impl <'b> FnAlias <'b>{
-    pub fn new <'a: 'b> (valopts: &'a ValOpts) -> Self{
-        Self { map: FnMap::new() , valopts}
+impl  FnAlias {
+    pub fn new  (valopts: Arc<RefCell<ValOpts>>) -> Self{
+        Self { map: FnMap::new(), valopts}
     }
     pub fn insert_default(&mut self) -> &Self{
         self.map.insert( "ln".to_string(), Function { lambda:

@@ -1,8 +1,7 @@
 use syntcalc as sc;
-use std::env::args;
+use std::{cell::RefCell, env::args, sync::Arc};
 fn main() {
-    let opts = sc::parse::ValOpts::default();
-    let parser = sc::SyntCalc::new(&opts);
+    let parser = sc::SyntCalc::new();
     let mut string = String::new();
     for i in args().skip(1) {
         string = format!("{} {}", string, i);

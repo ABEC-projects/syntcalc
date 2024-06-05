@@ -34,19 +34,19 @@ impl Default for ValOpts{
 
 /// Struct that represents a mathematical value with unit
 #[derive(Clone, Debug)]
-pub struct Val <'a>{
+pub struct Val {
     unit: Unit,
     magn: f64,
-    options: &'a ValOpts,
+    options: Arc<RefCell<ValOpts>>, 
 }
 
-impl <'b> Val <'b>{
-    pub fn new <'a: 'b> (magn:f64, unit: Unit, options: &'a ValOpts) -> Self{
+impl Val {
+    pub fn new (magn:f64, unit: Unit, options: Arc<RefCell<ValOpts>>) -> Self{
         Val{magn, unit, options}
     }
 
-    pub fn get_opts(&self) -> &ValOpts{
-        self.options
+    pub fn get_opts(&self) -> Arc<RefCell<ValOpts>>{
+        self.options.clone()
     }
 
     pub fn set_magnetude(&mut self, magn: f64){
@@ -62,7 +62,7 @@ impl <'b> Val <'b>{
 
     pub fn pow_val(&self, p: &Val) -> Result<Self, ValComputeError>{
         let mut ret = self.clone();
-        if !p.get_unit().same_unit( &base_units::D, self.options.cmp_epsilon){
+        if !p.get_unit().same_unit( &base_units::D, self.options.borrow().cmp_epsilon){
             return Err(ValComputeError::new(
                     "Can not rise to a power with a unit".to_string(),
                     ValComputeErrorType::IncompatibleUnits));
@@ -80,7 +80,7 @@ impl <'b> Val <'b>{
     }
 
     pub fn same_unit(&self, other: &Val) -> bool{
-        let precisionf = self.options.cmp_epsilon;
+        let precisionf = self.options.borrow().cmp_epsilon;
         return self.unit.same_unit(&other.unit, precisionf);
     }
 
@@ -91,7 +91,7 @@ impl <'b> Val <'b>{
     pub fn get_magnetude(&self) -> f64{
         self.magn
     }
-    pub fn from_str <'a: 'b> (s: &str, al: &'a ValAlias, options: &'a ValOpts) -> Result<Self, String> {
+    pub fn from_str  (s: &str, al: &ValAlias, options: Arc<RefCell<ValOpts>>) -> Result<Self, String> {
         use regex::Regex;
         let reg = 
             r"^(?<val>(?<neg>-)?(?<base>0[xbo])?(?<int>\d+)(\.(?<fract>\d+))?([Ee](?<exp>-?\d+))?)?(?<unit>\w+)?";
@@ -148,13 +148,13 @@ impl <'b> Val <'b>{
                 ((base as f64).powi(fract_part_len));
             magn *= (base as f64).powi(exponent_part);
 
-            let mut ret = Val::new(magn, D, options);
+            let mut ret = Val::new(magn, D, options.clone());
             ret *= match caps.name("unit"){
                 Some(s) => {match al.get_val(s.as_str()){
                     Some(v) => v,
                     None => return Err(format!("No {} found", s.as_str())),
                 }},
-                None => Self::new(1., D, options),
+                None => Self::new(1., D, options.clone()),
             };
             return Ok(ret);
         }else{
@@ -163,18 +163,21 @@ impl <'b> Val <'b>{
     }
 }
 
-impl Display for Val <'_>{
+impl Display for Val {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "todo:{}{:?}", self.magn, self.unit)
     }
 }
 
+use std::cell::RefCell;
 use std::fmt::Display;
+use std::ops::Deref;
+use std::sync::Arc;
 use std::{ops, str::FromStr};
 
 use super::associations::ValAlias;
 
-impl ops::Add for Val<'_>{
+impl ops::Add for Val{
     type Output = Result<Self, ValComputeError>;
     fn add(self, rhs: Self) -> Self::Output {
         let mut ret = self.clone();
@@ -192,7 +195,7 @@ impl ops::Add for Val<'_>{
     }
 }
 
-impl ops::Sub for Val<'_>{
+impl ops::Sub for Val{
     type Output = Result<Self, ValComputeError>;
     fn sub(self, rhs: Self) -> Self::Output {
         let mut ret = self.clone();
@@ -210,7 +213,7 @@ impl ops::Sub for Val<'_>{
     }
 }
 
-impl ops::Neg for Val<'_>{
+impl ops::Neg for Val{
     type Output = Self;
     fn neg(self) -> Self::Output {
         let mut ret = self.clone();
@@ -219,7 +222,7 @@ impl ops::Neg for Val<'_>{
     }
 }
 
-impl ops::Mul for Val<'_> {
+impl ops::Mul for Val {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self::Output {
         let mut ret = self.clone();
@@ -230,14 +233,14 @@ impl ops::Mul for Val<'_> {
     }
 }
 
-impl ops::MulAssign for Val <'_> {
+impl ops::MulAssign for Val  {
     fn mul_assign(&mut self, rhs: Self) {
         self.magn *= rhs.magn;
         self.unit *= rhs.unit;
     }
 }
 
-impl ops::Div for Val <'_> {
+impl ops::Div for Val  {
     type Output = Self;
     fn div(self, rhs: Self) -> Self::Output {
         let mut ret = self.clone();
@@ -248,7 +251,7 @@ impl ops::Div for Val <'_> {
     }
 }
 
-impl ops::DivAssign for Val <'_> {
+impl ops::DivAssign for Val  {
     fn div_assign(&mut self, rhs: Self) {
         self.magn /= rhs.magn;
         self.unit /= rhs.unit;
@@ -257,16 +260,16 @@ impl ops::DivAssign for Val <'_> {
 
 use std::cmp;
 
-impl cmp::PartialEq for Val <'_> {
+impl cmp::PartialEq for Val  {
     fn eq(&self, other: &Self) -> bool {
         return (
-            self.magn.abs()-other.magn.abs()).abs() < self.options.cmp_epsilon &&
+            self.magn.abs()-other.magn.abs()).abs() < self.options.borrow().cmp_epsilon &&
             self.same_unit(&other
         );
     }
 }
 
-impl cmp::PartialOrd for Val <'_> {
+impl cmp::PartialOrd for Val  {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         if self.same_unit(&other) {
             return Some(self.magn.partial_cmp(&other.magn).unwrap());
