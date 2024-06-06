@@ -109,7 +109,6 @@ impl Operator for BinOperator{
 #[derive(Clone, Copy, Debug)]
 pub enum UnOps {
     Neg, 
-    Fac,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -128,7 +127,6 @@ impl UnOperator{
         use Associativity::*;
         match match s{
             "-" => Some((Neg, 10, Right)),
-            "!" => Some((Fac, 15, Left)),
             _ => None,
         }{
             Some((op, prec, ass)) => Ok(Self::new(op, prec, ass)),
@@ -139,7 +137,6 @@ impl UnOperator{
         use UnOps::*;
         match self.kind {
             Neg => Ok(-val),
-            Fac => Ok(val.factorial()),
         }
     }
     pub fn get_precedence(&self) -> u32{
@@ -157,7 +154,6 @@ impl Display for UnOperator{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let name = match self.kind{
             UnOps::Neg => "-",
-            UnOps::Fac => "!",
         };
         write!(f, "{}", name)
     }

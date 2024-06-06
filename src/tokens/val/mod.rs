@@ -73,11 +73,6 @@ impl Val {
         Ok(ret)
     }
 
-    pub fn factorial(&self) -> Self{
-        let mut ret = self.clone();
-        todo!();
-        ret
-    }
 
     pub fn same_unit(&self, other: &Val) -> bool{
         let precisionf = self.options.borrow().cmp_epsilon;
@@ -171,9 +166,8 @@ impl Display for Val {
 
 use std::cell::RefCell;
 use std::fmt::Display;
-use std::ops::Deref;
 use std::sync::Arc;
-use std::{ops, str::FromStr};
+use std::ops;
 
 use super::associations::ValAlias;
 

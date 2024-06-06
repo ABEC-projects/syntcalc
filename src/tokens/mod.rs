@@ -39,20 +39,3 @@ impl Function{
         }
     }
 }
-
-enum Brc {
-    Opening,
-    Closing
-}
-pub struct Brace{
-    brc_type: Brc
-}
-impl Brace {
-    pub fn from_str(s: &str) -> Result <Self, String> {
-        match s.trim() {
-            "(" => Ok(Self { brc_type: (Brc::Opening) }),
-            ")" => Ok(Self { brc_type: (Brc::Closing) }),
-            _ => Err("Unknown brace type".to_string()),
-        }
-    }
-}

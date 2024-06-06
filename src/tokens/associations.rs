@@ -49,16 +49,14 @@ type FnMap = HashMap<String, Function>;
 #[derive(Clone)]
 pub struct FnAlias {
     map: FnMap,
-    valopts: Arc<RefCell<ValOpts>>,
 }
 
 
 impl  FnAlias {
-    pub fn new  (valopts: Arc<RefCell<ValOpts>>) -> Self{
-        Self { map: FnMap::new(), valopts}
+    pub fn new  () -> Self{
+        Self { map: FnMap::new()}
     }
     pub fn insert_default(&mut self) -> &Self{
-        use std::sync::Arc;
         self.map.insert( "ln".to_string(), Function { lambda: Arc::new(
             |x: Vec<Val>|{
                 if x[0].get_magnetude() < 0.{

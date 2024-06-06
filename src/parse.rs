@@ -1,4 +1,4 @@
-use crate::tokens::val::{self, ValComputeError, ValComputeErrorType};
+use crate::tokens::val::{ValComputeError, ValComputeErrorType};
 pub use crate::tokens::val::ValOpts;
 
 use super::tokens::{Val, BinOperator, UnOperator, Function};
@@ -26,18 +26,16 @@ impl Error for ParseError{}
 #[derive(Clone)]
 enum Expr  {
     Val(Val ),
-    Prefix(UnOperator),
-    Infix(BinOperator),
-    Postfixfix(UnOperator),
+    UnOp(UnOperator),
+    BinOp(BinOperator),
 }
 
 impl Display for Expr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let str = match self{
             Expr::Val(val) => format!("Val: {}", val), 
-            Expr::Infix(op) => format!("Infix: {}", op),
-            Expr::Prefix(op) => format!("Prefix: {}", op),
-            Expr::Postfixfix(op) => format!("Postfixfix: {}", op),
+            Expr::BinOp(op) => format!("BinOperator: {}", op),
+            Expr::UnOp(op) => format!("UnOperator: {}", op),
         };
         write!(f, "{}", str)
     }
@@ -62,15 +60,9 @@ impl Op {
         }
     }
     fn as_expr(self) -> Expr{
-        use crate::tokens::UnOps;
         match self{
-            Op::Un(op) => {
-                match op.get_op_type(){
-                    UnOps::Neg => Expr::Prefix(op),
-                    UnOps::Fac => Expr::Postfixfix(op),
-                }
-            },
-            Op::Bin(op) => Expr::Infix(op),
+            Op::Un(op) => Expr::UnOp(op),
+            Op::Bin(op) => Expr::BinOp(op),
         }
     }
 }
@@ -106,8 +98,12 @@ impl  SyntCalc  {
                     Expr::Val(self.eval_parsed(pair.into_inner())?)),
                 Rule::number => val_op_sequence.push(
                     Expr::Val(self.token_builder.val_from_str(pair.as_str()).unwrap())),
+
                 Rule::infix => val_op_sequence.push(
-                    Expr::Infix(BinOperator::from_str(pair.as_str()).unwrap())),
+                    Expr::BinOp(BinOperator::from_str(pair.as_str()).unwrap())),
+                Rule::prefix => val_op_sequence.push(
+                    Expr::UnOp(UnOperator::from_str(pair.as_str()).unwrap())),
+
                 Rule::func => val_op_sequence.push(
                     Expr::Val(self.token_builder.function_from_str(
                             pair.clone().into_inner().next().unwrap().as_str()).unwrap().compute(
@@ -119,13 +115,6 @@ impl  SyntCalc  {
                         Ok(val) => val,
                         Err(e) => return Err(ParseError{desc: format!("Error in while processing variables: {}", e)}),
                     })),
-                Rule::add => val_op_sequence.push(Expr::Infix(BinOperator::from_str("+").unwrap())),
-                Rule::sub => val_op_sequence.push(Expr::Infix(BinOperator::from_str("-").unwrap())),
-                Rule::mul => val_op_sequence.push(Expr::Infix(BinOperator::from_str("*").unwrap())),
-                Rule::neg => val_op_sequence.push(Expr::Prefix(UnOperator::from_str("-").unwrap())),
-                Rule::fac => val_op_sequence.push(Expr::Postfixfix(UnOperator::from_str("!").unwrap())),
-                Rule::div => val_op_sequence.push(Expr::Infix(BinOperator::from_str("/").unwrap())),
-                Rule::pow => val_op_sequence.push(Expr::Infix(BinOperator::from_str("^").unwrap())),
                 Rule::ternary => {
                     let mut inner = pair.into_inner();
                     let lhs = self.eval_parsed(inner.next().unwrap().into_inner())?;
@@ -238,7 +227,7 @@ impl  SyntCalc  {
         for val_op in val_op_sequence {
             match val_op {
                 Expr::Val(_) => reversed_polish.push(val_op),
-                Expr::Infix(op) => {
+                Expr::BinOp(op) => {
                     while op_stack.len() > 0 {
                         if let Some(last_op) = op_stack.last() {
                             if op.get_precedence() < last_op.get_precedence() || 
@@ -250,7 +239,7 @@ impl  SyntCalc  {
                     }
                     op_stack.push(Op::Bin(op));
                 }
-                Expr::Prefix(op) | Expr::Postfixfix(op) => {
+                Expr::UnOp(op)=> {
                     while op_stack.len() > 0 {
                         if let Some(last_op) = op_stack.last() {
                             if op.get_precedence() < last_op.get_precedence() || 
@@ -294,7 +283,7 @@ impl  SyntCalc  {
         while i < val_op_sequence.len() {
             match val_op_sequence[i] {
                 Expr::Val(_) => {i += 1; continue;},
-                Expr::Infix(op) => {
+                Expr::BinOp(op) => {
                     let operands_positions = find_last_vals(&val_op_sequence[0..i], 2);
                     let rhs = match val_op_sequence.remove(operands_positions[0]){
                         Expr::Val(val) => val,
@@ -309,7 +298,7 @@ impl  SyntCalc  {
                     val_op_sequence.remove(i);
                     val_op_sequence.insert(i, Expr::Val(result));
                 },
-                Expr::Prefix(op) | Expr::Postfixfix(op) => {
+                Expr::UnOp(op)=> {
                     let operands_positions = find_last_vals(&val_op_sequence[0..i], 1);
                     let lrhs = match val_op_sequence.remove(operands_positions[0]){
                         Expr::Val(val) => val,
@@ -341,11 +330,7 @@ pub struct MathParser{}
 
 #[cfg(test)]
 mod tests{
-    use std::cell::RefCell;
-    use std::sync::Arc;
-
     use super::SyntCalc;
-    use super::ValOpts;
 
     #[test]
     fn some_check(){

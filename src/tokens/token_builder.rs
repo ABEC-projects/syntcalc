@@ -1,11 +1,10 @@
 
 use std::cell::RefCell;
-use std::ops::Deref;
 use std::sync::Arc;
 
-use super::val::{ValOpts, base_units::*};
+use super::val::ValOpts;
 use super::associations::{ValAlias, FnAlias};
-use super::{BinOperator, Brace, Function, UnOperator, Val};
+use super::{BinOperator, Function, UnOperator, Val};
 
 #[derive(Clone)]
 pub struct Builder {
@@ -19,7 +18,7 @@ impl Builder {
     pub fn new (val_opts: Arc<RefCell<ValOpts>>) -> Self{
         Builder{val_opts: val_opts.clone(),
                 val_alias: ValAlias::new(val_opts.clone()),
-                func_alias: FnAlias::new(val_opts.clone())}
+                func_alias: FnAlias::new()}
     }
     pub fn val_from_str(&self, s: &str) -> Result<Val, String>{
          Val::from_str(s, &self.val_alias, self.val_opts.clone())
