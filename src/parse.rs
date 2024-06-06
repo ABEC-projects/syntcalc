@@ -67,7 +67,7 @@ impl Op {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct SyntCalc {
     pub token_builder: Builder,
 }
