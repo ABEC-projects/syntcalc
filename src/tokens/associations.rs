@@ -5,7 +5,7 @@ use super::{Function, Val};
 use super::val::{base_units::*, ValComputeError, ValComputeErrorType, ValOpts};
 
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct ValAlias{
     map: HashMap<String, Val>,
     valopts: Arc<RefCell<ValOpts>>, 
@@ -25,7 +25,7 @@ impl ValAlias {
         self.map.insert(String::from("s"), Val::new(1., S, self.valopts.clone()));
         self.map.insert(String::from("J"), Val::new(1., KG*M.pow(2.)/S.pow(2.), self.valopts.clone()));
         self.map.insert(String::from("W"), Val::new(1., KG*M.pow(2.)/S.pow(3.), self.valopts.clone()));
-        self.map.insert(String::from("pi"), Val::new(3.141592653589793238462643383279502, D, self.valopts.clone()));
+        self.map.insert(String::from("pi"), Val::new(std::f64::consts::PI, D, self.valopts.clone()));
 
         self
     }
@@ -46,7 +46,7 @@ impl ValAlias {
 }
 
 type FnMap = HashMap<String, Function>;
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct FnAlias {
     map: FnMap,
 }

@@ -11,8 +11,6 @@ pub use val::Val as Val;
 pub use operators::*;
 
 
-trait FnLabmda: Fn(Vec<Val>) -> Result<Val, ValComputeError>{}
-
 #[derive(Clone)]
 pub struct Function{
     lambda: Arc<dyn Fn(Vec<Val>) -> Result<Val, ValComputeError>>,
