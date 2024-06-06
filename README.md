@@ -26,7 +26,6 @@ g(x) //output: 16
 ## Improvements to be made 
 - Add support for outputting number's units (it can only read and process them for now)
 - Add support for arbitrary precision arithmetic
-- Add support for recursion
 - Add support for complex numbers (maybe)
 
 

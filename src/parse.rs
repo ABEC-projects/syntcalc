@@ -25,7 +25,7 @@ impl Error for ParseError{}
 
 #[derive(Clone)]
 enum Expr  {
-    Val(Val ),
+    Val(Val),
     UnOp(UnOperator),
     BinOp(BinOperator),
 }
@@ -77,7 +77,7 @@ pub struct SyntCalc {
 impl  SyntCalc  {
     pub fn new () -> Self{
         Self{
-            token_builder: Builder::new(Arc::new(RefCell::new(ValOpts::default()))), //ValOpts::default()),
+            token_builder: Builder::new(), //ValOpts::default()),
         }
     }
     pub fn eval_str(&mut self, expr: &str) -> Result<Val, ParseError>{
@@ -142,7 +142,7 @@ impl  SyntCalc  {
                     let mut inner = pair.into_inner();
                     let name = inner.next().unwrap().as_str().to_string();
                     let val = self.eval_parsed(inner.next().unwrap().into_inner())?;
-                    self.token_builder.val_alias.add_alias(name, val.clone());
+                    self.token_builder.val_alias.borrow_mut().add_alias(name, val.clone());
                 },
                 Rule::add_function => {
                     let inner = pair.into_inner();
@@ -165,22 +165,23 @@ impl  SyntCalc  {
                     let argc = names.len() - 1;
                     let sc = self.clone();
 
-                    let names: Vec<String> = names.iter().skip(1).map(
-                        |name| name.as_str().to_string()).collect();
+                    let names: Vec<String> = names.iter().skip(1)
+                        .map(|name| name.as_str().to_string())
+                        .collect();
 
                     let lambda = move |vals: Vec<Val>|{
                         let arg_names = names.clone();
                         let body = body.clone();
                         let mut sc = sc.clone();
                         for i in 0..arg_names.len() {
-                            sc.token_builder.val_alias.add_alias(arg_names[i].clone(), vals[i].clone())
+                            sc.token_builder.local_val_alias.add_alias(arg_names[i].clone(), vals[i].clone())
                         }
                         return sc.eval_str(&body).map_err(|e| ValComputeError::new(e.desc, ValComputeErrorType::Other));
                     };
 
                     let func = Function::new(std::sync::Arc::new(lambda), argc as u32);
 
-                    self.token_builder.func_alias.add_alias(fn_name, func);
+                    self.token_builder.func_alias.borrow_mut().add_alias(fn_name, func);
                 },
                 Rule::EOI => break,
                 _ => todo!("unimplemented rule: {:?}", pair.as_rule()),
@@ -197,17 +198,18 @@ impl  SyntCalc  {
         match pair.as_rule() {
             Rule::func => {
                 let mut args = Vec::new();
-                for arg in pair.clone().into_inner() {
+                let inner = pair.clone().into_inner().skip(1);
+                
+                for arg in inner {
                     match arg.as_rule() {
-                        Rule::args =>{
+                        Rule::expr =>{
                             let arg_val = self.eval_parsed(arg.into_inner());
                             match arg_val {
                                 Ok(val) => args.push(val),
                                 Err(_) => return None,
                             }
                         }
-                        Rule::name => (), 
-                        _ => unreachable!(),
+                        _ => unreachable!("Reached: {:?}", arg.as_rule()),
                     }
                 }
                 return Some(args);

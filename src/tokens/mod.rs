@@ -29,7 +29,7 @@ impl Function{
         if args.len() ==  self.argc as usize{
             return (self.lambda)(args).map_err(|x| x.to_string());
         }else{
-            return Err("Argument number do not match".to_string());
+            return Err(format!("Argument number do not match.\nExpected: {}, found: {}", self.argc, args.len()));
         }
     }
     pub fn from_str(s: &str, al: &FnAlias) -> Result<Self, String>{
