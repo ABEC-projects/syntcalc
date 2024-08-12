@@ -5,11 +5,12 @@ use super::{Function, Val};
 use super::val::{base_units::*, ValComputeError, ValComputeErrorType, ValOpts};
 
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct ValAlias{
     map: HashMap<String, Val>,
     valopts: Arc<RefCell<ValOpts>>, 
 }
+
 
 impl ValAlias {
     pub fn new (valopts: Arc<RefCell<ValOpts>>) -> Self{
@@ -46,9 +47,17 @@ impl ValAlias {
 }
 
 type FnMap = HashMap<String, Function>;
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct FnAlias {
     map: FnMap,
+}
+
+impl Default for FnAlias {
+    fn default() -> Self {
+        let mut ret = FnAlias::new();
+        ret.insert_default();
+        ret
+    }
 }
 
 
@@ -61,7 +70,7 @@ impl  FnAlias {
             |x: Vec<Val>|{
                 if x[0].get_magnetude() < 0.{
                     return Err(ValComputeError::new(
-                            "Can not take the logarithm of a negative number".to_string(),
+                            "Can not take a logarithm of a negative number".to_string(),
                             ValComputeErrorType::Other));
                 }
                 let mut ret = x[0].clone();
@@ -88,7 +97,60 @@ impl  FnAlias {
             }),
             argc: 1
         });
-
+        self.map.insert("tan".to_string(), Function::new(
+                Arc::new(|x|{
+                    let mut ret = x[0].clone();
+                    ret.set_magnetude(ret.get_magnetude().tan());
+                    Ok(ret)
+                }),1));
+        self.map.insert("cot".to_string(), Function::new(
+                Arc::new(|x|{
+                    let mut ret = x[0].clone();
+                    ret.set_magnetude(ret.get_magnetude().tan().recip());
+                    Ok(ret)
+                }),1));
+        self.map.insert("arcsin".to_string(), Function::new(
+                Arc::new(|x|{
+                    let mut ret = x[0].clone();
+                    ret.set_magnetude(ret.get_magnetude().asin());
+                    Ok(ret)
+                }),1));
+        self.map.insert("arccos".to_string(), Function::new(
+                Arc::new(|x|{
+                    let mut ret = x[0].clone();
+                    ret.set_magnetude(ret.get_magnetude().acos());
+                    Ok(ret)
+                }),1));
+        self.map.insert("arctan".to_string(), Function{
+            lambda: Arc::new(|x|{
+                let mut ret = x[0].clone();
+                ret.set_magnetude(ret.get_magnetude().atan());
+                Ok(ret)
+            }),
+            argc: 1
+        });
+        self.map.insert("arccot".to_string(), Function{
+            lambda: Arc::new(|x|{
+                let mut ret = x[0].clone();
+                ret.set_magnetude(-(ret.get_magnetude().atan()-std::f64::consts::PI/2.));
+                Ok(ret)
+            }),
+            argc: 1
+        });
+        self.map.insert("abs".to_string() , Function::new(
+            Arc::new(|x|{
+                let mut ret = x[0].clone();
+                ret.set_magnetude(ret.get_magnetude().abs());
+                Ok(ret)
+            }),1   
+        ));
+        self.map.insert("fract".to_string() , Function::new(
+            Arc::new(|x|{
+                let mut ret = x[0].clone();
+                ret.set_magnetude(ret.get_magnetude().fract());
+                Ok(ret)
+            }),1   
+        ));
         self
     }
     pub fn get_fn(&self, key: &str) -> Option<Function>{

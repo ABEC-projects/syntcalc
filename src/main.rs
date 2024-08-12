@@ -1,8 +1,7 @@
 use syntcalc as sc;
 use std::io;
 fn main() {
-    let mut parser = sc::SyntCalc::new();
-    parser.token_builder.insert_defaults();
+    let mut parser = sc::SyntCalc::default();
     let mut string = String::new();
     loop {
         io::stdin()

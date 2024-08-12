@@ -76,7 +76,7 @@ impl Val {
 
     pub fn same_unit(&self, other: &Val) -> bool{
         let precisionf = self.options.borrow().cmp_epsilon;
-        return self.unit.same_unit(&other.unit, precisionf);
+        self.unit.same_unit(&other.unit, precisionf)
     }
 
     pub fn get_unit(&self) -> Unit{
@@ -92,7 +92,7 @@ impl Val {
             r"^(?<val>(?<neg>-)?(?<base>0[xbo])?(?<int>\d+)(\.(?<fract>\d+))?([Ee](?<exp>-?\d+))?)?(?<unit>\w+)?";
         let regex_val = Regex::new(reg).unwrap();
         let Some(caps) = regex_val.captures(s) else {return Err("Wrong value format!".to_string())};
-        if let Some(_) = caps.name("val"){
+        if caps.name("val").is_some(){
             let base:u32 = match caps.name("base"){
                 Some(s) => {
                     match s.as_str(){
@@ -127,13 +127,13 @@ impl Val {
             };
             let exponent_part: i32 = match caps.name("exp"){
                 Some(s) => {
-                    s.as_str().replace("-", "").parse::<i32>().unwrap() *
+                    s.as_str().replace('-', "").parse::<i32>().unwrap() *
                         (if  s.as_str().contains('-') {-1} else {1})
                 },
                 None => 0,
             };
             let neg: f64 = match caps.name("neg"){
-                Some(s) => if s.as_str().contains("-") {-1.} else {1.},
+                Some(s) => if s.as_str().contains('-') {-1.} else {1.},
                 None => 1.,
             };
             
@@ -151,9 +151,9 @@ impl Val {
                 }},
                 None => Self::new(1., D, options.clone()),
             };
-            return Ok(ret);
+            Ok(ret)
         }else{
-            return Err("No number found in the string".to_string());
+            Err("No number found in the string".to_string())
         }
     }
 }
@@ -174,9 +174,9 @@ use super::associations::ValAlias;
 impl ops::Add for Val{
     type Output = Result<Self, ValComputeError>;
     fn add(self, rhs: Self) -> Self::Output {
-        let mut ret = self.clone();
+        let mut ret = self;
 
-        if self.unit == rhs.unit {
+        if ret.unit == rhs.unit {
             ret.magn += rhs.magn;
         }else{
             return Err(ValComputeError::new(
@@ -192,9 +192,9 @@ impl ops::Add for Val{
 impl ops::Sub for Val{
     type Output = Result<Self, ValComputeError>;
     fn sub(self, rhs: Self) -> Self::Output {
-        let mut ret = self.clone();
+        let mut ret = self;
 
-        if self.unit == rhs.unit {
+        if ret.unit == rhs.unit {
             ret.magn -= rhs.magn;
         }else{
             return Err(ValComputeError::new(
@@ -202,7 +202,6 @@ impl ops::Sub for Val{
                 ValComputeErrorType::IncompatibleUnits
                     ));
         }
-
         Ok(ret)
     }
 }
@@ -210,7 +209,7 @@ impl ops::Sub for Val{
 impl ops::Neg for Val{
     type Output = Self;
     fn neg(self) -> Self::Output {
-        let mut ret = self.clone();
+        let mut ret = self;
         ret.magn = -ret.magn;
         ret
     }
@@ -219,7 +218,7 @@ impl ops::Neg for Val{
 impl ops::Mul for Val {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self::Output {
-        let mut ret = self.clone();
+        let mut ret = self;
 
         ret.magn *= rhs.magn;
         ret.unit *= rhs.unit;
@@ -237,7 +236,7 @@ impl ops::MulAssign for Val  {
 impl ops::Div for Val  {
     type Output = Self;
     fn div(self, rhs: Self) -> Self::Output {
-        let mut ret = self.clone();
+        let mut ret = self;
 
         ret.magn /= rhs.magn;
         ret.unit /= rhs.unit;
@@ -256,19 +255,31 @@ use std::cmp;
 
 impl cmp::PartialEq for Val  {
     fn eq(&self, other: &Self) -> bool {
-        return (
-            self.magn.abs()-other.magn.abs()).abs() < self.options.borrow().cmp_epsilon &&
-            self.same_unit(&other
-        );
+        return (self.magn.abs()-other.magn.abs()).abs() < self.options.borrow().cmp_epsilon 
+            && self.same_unit(other);
     }
 }
 
 impl cmp::PartialOrd for Val  {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
-        if self.same_unit(&other) {
-            return Some(self.magn.partial_cmp(&other.magn).unwrap());
+        if self.same_unit(other) {
+            Some(self.magn.partial_cmp(&other.magn).unwrap())
         }else{
-            return None;
+            None
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_basic_math() {
+        let opts = Arc::new(RefCell::new(ValOpts::default()));
+        let a = Val::new(1., D, opts.clone());
+        let b = Val::new(1., KG, opts.clone());
+        assert_eq!((a.clone()+a.clone()).unwrap(), Val::new(2., D, opts.clone()));
+        assert_eq!(b.clone().pow(2.), Val::new(1., KG.pow(2.), opts.clone()));
     }
 }

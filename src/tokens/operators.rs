@@ -48,7 +48,7 @@ impl BinOperator {
             Mod => todo!(),
         }
     }
-    pub fn from_str(s: &str) -> Result<Self, String> {
+    pub fn match_str(s: &str) -> Result<Self, String> {
         use BinOps::*;
         use Associativity::*;
         match match s{
@@ -91,12 +91,12 @@ impl Display for BinOperator{
 impl FromStr for BinOperator {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::from_str(s)
+        Self::match_str(s)
     }
 }
 impl Operator for BinOperator{
     fn from_str(s: &str) -> Result<Self, String> {
-        Self::from_str(s)
+        Self::match_str(s)
     }
     fn get_precedence(&self) -> u32 {
         self.get_precedence()
@@ -122,7 +122,7 @@ impl UnOperator{
     fn new(kind: UnOps, precedence: u32, associativity: Associativity) -> Self{
         UnOperator{kind, precedence, associativity}
     }
-    pub fn from_str(s: &str) -> Result<Self, String> {
+    pub fn match_str(s: &str) -> Result<Self, String> {
         use UnOps::*;
         use Associativity::*;
         match match s{
@@ -161,12 +161,12 @@ impl Display for UnOperator{
 impl FromStr for UnOperator {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::from_str(s)
+        Self::match_str(s)
     }
 }
 impl Operator for UnOperator{
     fn from_str(s: &str) -> Result<Self, String> {
-        Self::from_str(s)
+        Self::match_str(s)
     }
     fn get_precedence(&self) -> u32 {
         self.get_precedence()

@@ -29,7 +29,7 @@ impl Unit {
     }
 
     pub fn pow(self, p:f64) -> Self{
-        let mut ret = self.clone();
+        let mut ret = self;
         for i in 0..7{
             ret.dim[i] *= p;
         }
@@ -50,10 +50,7 @@ impl Unit {
 
 impl std::cmp::PartialEq for Unit {
     fn eq(&self, other: &Self) -> bool {
-        return self.dim == other.dim
-    }
-    fn ne(&self, other: &Self) -> bool {
-        !self.eq(other)
+        self.dim == other.dim
     }
 }
 
@@ -63,9 +60,9 @@ impl ops::Add for Unit{
     type Output = Option<Unit>;
     fn add(self, rhs: Self) -> Self::Output {
         if self.dim == rhs.dim {
-            return Option::Some(self);
+            Option::Some(self)
         }else{
-            return Option::None;
+            Option::None
         }
     }
 }
@@ -74,9 +71,9 @@ impl ops::Sub for Unit{
     type Output = Option<Unit>;
     fn sub(self, rhs: Self) -> Self::Output {
         if self.dim == rhs.dim {
-            return Option::Some(self);
+            Option::Some(self)
         }else{
-            return Option::None;
+            Option::None
         }
     }
 }
@@ -84,7 +81,7 @@ impl ops::Sub for Unit{
 impl ops::Mul for Unit{
     type Output = Unit;
     fn mul(self, rhs: Self) -> Self::Output {
-        let mut ret = self.clone();
+        let mut ret = self;
         for i in 0..7{
             ret.dim[i] += rhs.dim[i];
         };
@@ -103,7 +100,7 @@ impl ops::MulAssign for Unit {
 impl ops::Div for Unit{
     type Output = Unit;
     fn div(self, rhs: Self) -> Self::Output {
-        let mut ret = self.clone();
+        let mut ret = self;
         for i in 0..7{
             ret.dim[i] -= rhs.dim[i];
         };

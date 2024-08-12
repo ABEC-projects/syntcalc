@@ -23,11 +23,11 @@ impl Function{
     pub fn new (lambda: Arc<dyn Fn(Vec<Val>) -> Result<Val, ValComputeError>>,  argc: u32) -> Self{
         Function{lambda, argc}
     }
-    pub fn compute <'a> (&self, args: Vec<Val>) -> Result<Val, String> {
+    pub fn compute (&self, args: Vec<Val>) -> Result<Val, String> {
         if args.len() ==  self.argc as usize{
-            return (self.lambda)(args).map_err(|x| x.to_string());
+            (self.lambda)(args).map_err(|x| x.to_string())
         }else{
-            return Err(format!("Argument number do not match.\nExpected: {}, found: {}", self.argc, args.len()));
+            Err(format!("Argument number do not match.\nExpected: {}, found: {}", self.argc, args.len()))
         }
     }
     pub fn from_str(s: &str, al: &FnAlias) -> Result<Self, String>{
