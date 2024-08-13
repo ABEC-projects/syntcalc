@@ -96,7 +96,7 @@ impl  SyntCalc {
                 Rule::file => val_op_sequence.push(
                     Expr::Val(self.eval_parsed(pair.into_inner())?)),
                 Rule::number => val_op_sequence.push(
-                    Expr::Val(self.token_builder.val_from_str(pair.as_str()).unwrap())),
+                    Expr::Val(self.token_builder.val_from_str(pair.as_str().trim()).unwrap())),
 
                 Rule::infix => val_op_sequence.push(
                     Expr::BinOp(BinOperator::match_str(pair.as_str()).unwrap())),

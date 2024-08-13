@@ -5,15 +5,17 @@ pub use unit::base_units;
 pub use unit::Unit;
 pub use errors::ValComputeError;
 pub use errors::ErrorType as ValComputeErrorType;
+use super::associations::UnitAlias;
+use super::associations::ValAlias;
 
 
 use unit::base_units::*;
 
 
-
 #[derive(Debug, Clone)]
 pub struct ValOpts{
     cmp_epsilon: f64,
+    unit_alias: UnitAlias,
 }
 
 impl ValOpts{
@@ -24,11 +26,12 @@ impl ValOpts{
         self.cmp_epsilon = cmp_epsilon;
         self
     }
+
 }
 
 impl Default for ValOpts{ 
     fn default() -> Self {
-        ValOpts{cmp_epsilon: 0.000001}
+        ValOpts{cmp_epsilon: 0.000001, unit_alias: UnitAlias::default()}
     }
 }
 
@@ -89,7 +92,7 @@ impl Val {
     pub fn from_str  (s: &str, al: &ValAlias, options: Arc<RefCell<ValOpts>>) -> Result<Self, String> {
         use regex::Regex;
         let reg = 
-            r"^(?<val>(?<neg>-)?(?<base>0[xbo])?(?<int>\d+)(\.(?<fract>\d+))?([Ee](?<exp>-?\d+))?)?(?<unit>\w+)?";
+            r"^(?<val>(?<neg>-)?(?<base>0[xbo])?(?<int>\d+)(\.(?<fract>\d+))?([Ee](?<exp>-?\d+))?)?\s*(?<unit>\w+)?";
         let regex_val = Regex::new(reg).unwrap();
         let Some(caps) = regex_val.captures(s) else {return Err("Wrong value format!".to_string())};
         if caps.name("val").is_some(){
@@ -160,7 +163,11 @@ impl Val {
 
 impl Display for Val {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.magn)
+        let unit = &self.unit;
+        let prec = self.options.borrow().cmp_epsilon;
+        let ual = &self.options.borrow().unit_alias;
+        let unit_mame = ual.get_name(unit, prec).unwrap_or("".to_string());
+        write!(f, "{}{}", self.magn, unit_mame)
     }
 }
 
@@ -169,7 +176,6 @@ use std::fmt::Display;
 use std::sync::Arc;
 use std::ops;
 
-use super::associations::ValAlias;
 
 impl ops::Add for Val{
     type Output = Result<Self, ValComputeError>;

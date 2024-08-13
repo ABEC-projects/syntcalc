@@ -10,6 +10,7 @@ pub mod base_units{
     pub const CD :Unit = Unit{dim:[0., 0., 0., 0., 0., 0., 1.]};
 }
 
+
 /// # Struct that represents number's Unit
 /// Essentially, it's a vector with 7 floats,
 /// each representing power of one of the base units
@@ -20,7 +21,7 @@ pub mod base_units{
 /// ```
 #[derive(Clone, Copy, Debug)]
 pub struct Unit{
-    dim: [f64;7],
+    pub dim: [f64;7],
 }
 
 impl Unit {
@@ -43,10 +44,10 @@ impl Unit {
                 self.dim[i] + precision/2. > other.dim[i];  
         }
         flag
-        
     }
     
 }
+
 
 impl std::cmp::PartialEq for Unit {
     fn eq(&self, other: &Self) -> bool {
@@ -54,7 +55,7 @@ impl std::cmp::PartialEq for Unit {
     }
 }
 
-use std::ops;
+use std::{fmt::Display, ops};
 
 impl ops::Add for Unit{
     type Output = Option<Unit>;

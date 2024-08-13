@@ -1,9 +1,48 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
-use super::{Function, Val};
-use super::val::{base_units::*, ValComputeError, ValComputeErrorType, ValOpts};
+use super::{val, Function, Val};
+use super::val::{base_units::*, Unit, ValComputeError, ValComputeErrorType, ValOpts};
 
+#[derive(Clone, Debug)]
+pub(crate) struct UnitAlias{
+    all_units: Vec<(val::unit::Unit, String)>
+}
+
+impl UnitAlias {
+    pub(crate) fn get_name(&self, unit: &Unit, precision: f64) -> Option<String>{
+        for (u, name) in &self.all_units {
+            let mut flag = true;
+            for i in 0..7 {
+                flag = flag && (u.dim[i] - unit.dim[i]).abs() < precision as f64;
+            }
+            if flag {
+                return Some(name.clone());
+            }
+        };
+        None
+    }
+
+    pub(crate) fn append(&mut self, unit: Unit, name: String) {
+        self.all_units.push((unit, name));
+    }
+    
+    pub(crate) fn new() -> Self {
+        Self { all_units: Vec::new() }
+    }
+}
+
+impl Default for UnitAlias {
+    fn default() -> Self {
+        use val::unit::base_units::*;
+        let vec = vec![
+            (M, "m".to_owned()),
+            (D, "".to_owned()),
+            (KG, "kg".to_owned())
+        ];
+        Self { all_units: vec }
+    }
+}
 
 #[derive(Clone)]
 pub struct ValAlias{
@@ -18,6 +57,7 @@ impl ValAlias {
         ValAlias{map, valopts}
     }
     pub fn insert_default (&mut self) -> &Self{
+        self.map.insert(String::from("m"), Val::new(1., M, self.valopts.clone()));
         self.map.insert(String::from("km"), Val::new(1000., M, self.valopts.clone()));
         self.map.insert(String::from("g"), Val::new(0.001, KG, self.valopts.clone()));
         self.map.insert(String::from("kg"), Val::new(1., KG, self.valopts.clone()));
@@ -167,3 +207,25 @@ impl  FnAlias {
         self.map.insert(key, value);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unit_alias(){
+       let al = UnitAlias::default();
+       assert_eq!(al.get_name(&M, 0.0001).unwrap(), "m");
+       assert_eq!(al.get_name(&KG, 0.0001).unwrap(), "kg");
+       assert_ne!(al.get_name(&D, 0.0001).unwrap(), "kg");
+    }
+}
+
+
+
+
+
+
+
+
+
