@@ -14,7 +14,7 @@ impl UnitAlias {
         for (u, name) in &self.all_units {
             let mut flag = true;
             for i in 0..7 {
-                flag = flag && (u.dim[i] - unit.dim[i]).abs() < precision as f64;
+                flag = flag && (u.dim[i] - unit.dim[i]).abs() < precision;
             }
             if flag {
                 return Some(name.clone());
@@ -36,10 +36,15 @@ impl Default for UnitAlias {
     fn default() -> Self {
         use val::unit::base_units::*;
         let vec = vec![
-            (M, "m".to_owned()),
-            (D, "".to_owned()),
-            (KG, "kg".to_owned())
+            (M, "m".to_string()),
+            (D, "".to_string()),
+            (KG, "kg".to_string()),
+            (KG*M.pow(2.)/S.pow(2.), "J".to_string()),
+            (KG*M.pow(2.)/S.pow(3.), "W".to_string()),
+            (S, "s".to_string()),
+            (M/S, "m/s".to_string()),
         ];
+        let vec = vec.into_iter().map(|x|{(x.0, x.1.to_string())}).collect();
         Self { all_units: vec }
     }
 }

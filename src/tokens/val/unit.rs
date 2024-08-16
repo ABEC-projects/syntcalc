@@ -55,7 +55,7 @@ impl std::cmp::PartialEq for Unit {
     }
 }
 
-use std::{fmt::Display, ops};
+use std::ops;
 
 impl ops::Add for Unit{
     type Output = Option<Unit>;
